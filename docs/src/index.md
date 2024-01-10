@@ -1,12 +1,12 @@
 # PowerSystems.jl
 
 ```@meta
-CurrentModule = SIIP_PACKAGE
+CurrentModule = PowerSimulationsDecomposition
 ```
 
 ## Overview
 
-`PPowerSimulationsDecomposition .jl` is a [`Julia`](http://www.julialang.org) package that provides blah blah
+`PowerSimulationsDecomposition .jl` is a [`Julia`](http://www.julialang.org) package that provides blah blah
 
 ------------
 PowerSimulationsDecomposition  has been developed as part of the Scalable Integrated Infrastructure Planning

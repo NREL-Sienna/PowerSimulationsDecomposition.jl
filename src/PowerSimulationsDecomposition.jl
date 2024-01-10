@@ -1,5 +1,4 @@
-module SIIP
--PACKAGE
+module PowerSimulationsDecomposition
 
 using DocStringExtensions
 
