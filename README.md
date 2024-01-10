@@ -12,4 +12,4 @@ Contributions to the development and enahancement of PowerSimulationsDecompositi
 
 ## License
 
-PowerSimulationsDecomposition.jl is released under a BSD [license](https://github.com/NREL/PowerSimulationsDecomposition/blob/master/LICENSE). PowerSimulationsDecomposition.jl has been developed as part of the GDO Inter-Regional Transmission Coordination Project at the U.S. Department of Energy's National Renewable Energy Laboratory ([NREL](https://www.nrel.gov/))
+PowerSimulationsDecomposition.jl is released under a BSD [license](https://github.com/NREL/PowerSimulationsDecomposition/blob/master/LICENSE). PowerSimulationsDecomposition.jl has been developed as part of the Interregional Transmission Operational Coordination (IRTOC) under GDO 20 at the U.S. Department of Energy's National Renewable Energy Laboratory ([NREL](https://www.nrel.gov/))
