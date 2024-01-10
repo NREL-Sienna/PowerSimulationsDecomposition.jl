@@ -19,7 +19,7 @@ end
 function build_main_problem!(
     container::MultiOptimizationContainer{SequentialAlgorithm},
     template::PSI.ProblemTemplate,
-    sys::PSY.System,)
+    sys::PSY.System)
 end
 
 function solve_impl!(container::MultiOptimizationContainer{SequentialAlgorithm}, sys::PSY.System)

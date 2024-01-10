@@ -8,8 +8,8 @@
 
 ## Development
 
-Contributions to the development and enahancement of PowerSimulationsDecomposition is welcome. Please see [CONTRIBUTING.md](https://github.com/NREL-Sienna/PowerSimulationsDecomposition.jl/blob/master/CONTRIBUTING.md) for code contribution guidelines.
+Contributions to the development and enahancement of PowerSimulationsDecomposition.jl are welcome. Please see [CONTRIBUTING.md](https://github.com/NREL-Sienna/PowerSimulationsDecomposition.jl/blob/master/CONTRIBUTING.md) for code contribution guidelines.
 
 ## License
 
-PowerSimulationsDecomposition is released under a BSD [license](https://github.com/NREL/PowerSimulationsDecomposition/blob/master/LICENSE). PowerSimulationsDecomposition.jl has been developed as part of the GDO Inter-Regional Transmission Coordination Project at the U.S. Department of Energy's National Renewable Energy Laboratory ([NREL](https://www.nrel.gov/))
+PowerSimulationsDecomposition.jl is released under a BSD [license](https://github.com/NREL/PowerSimulationsDecomposition/blob/master/LICENSE). PowerSimulationsDecomposition.jl has been developed as part of the GDO Inter-Regional Transmission Coordination Project at the U.S. Department of Energy's National Renewable Energy Laboratory ([NREL](https://www.nrel.gov/))

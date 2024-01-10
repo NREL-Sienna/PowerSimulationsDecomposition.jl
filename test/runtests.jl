@@ -1,12 +1,26 @@
+# SIIP Packages
+using PowerSimulationsDecomposition
+using PowerSimulations
+using PowerSystems
+using PowerSystemCaseBuilder
+using InfrastructureSystems
+using PowerNetworkMatrices
+using HydroPowerSimulations
+import PowerSystemCaseBuilder: PSITestSystems
+using PowerNetworkMatrices
+using StorageSystemsSimulations
+
+# Test Packages
 using Test
-import Logging
+using Logging
+
 
 import Aqua
-Aqua.test_unbound_args(SIIP - PACKAGE)
-Aqua.test_undefined_exports(SIIP - PACKAGE)
-Aqua.test_ambiguities(SIIP - PACKAGE)
-Aqua.test_stale_deps(SIIP - PACKAGE)
-Aqua.test_deps_compat(SIIP - PACKAGE)
+Aqua.test_unbound_args(PowerSimulationsDecomposition)
+Aqua.test_undefined_exports(PowerSimulationsDecomposition)
+Aqua.test_ambiguities(PowerSimulationsDecomposition)
+Aqua.test_stale_deps(PowerSimulationsDecomposition)
+Aqua.test_deps_compat(PowerSimulationsDecomposition)
 
 LOG_FILE = "power-systems.log"
 LOG_LEVELS = Dict(
@@ -87,7 +101,7 @@ function run_tests()
         end
 
         # Testing Topological components of the schema
-        @time @testset "Begin PowerSimulationsDecomposition tests" begin
+        @time @testset "Begin PowerSimulationsDecomposition.jl tests" begin
             @includetests ARGS
         end
 
