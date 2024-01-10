@@ -6,7 +6,6 @@
 [<img src="https://img.shields.io/badge/slack-@Sienna/PSIDec-sienna.svg?logo=slack">](https://join.slack.com/t/nrel-sienna/shared_invite/zt-glam9vdu-o8A9TwZTZqqNTKHa7q3BpQ)
 [![PowerSimulationsDecomposition.jl Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/PowerSimulationsDecomposition)](https://pkgs.genieframework.com?packages=PowerSimulationsDecomposition)
 
-
 ## Development
 
 Contributions to the development and enahancement of PowerSimulationsDecomposition is welcome. Please see [CONTRIBUTING.md](https://github.com/NREL-Sienna/PowerSimulationsDecomposition.jl/blob/master/CONTRIBUTING.md) for code contribution guidelines.

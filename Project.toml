@@ -4,8 +4,20 @@ authors = ["Jose Daniel Lara"]
 version = "0.1.0"
 
 [deps]
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+InfrastructureSystems = "2cd47ed4-ca9b-11e9-27f2-ab636a7671f1"
+JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
+MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
+PowerSimulations = "e690365d-45e2-57bb-ac84-44ba829e73c4"
+PowerSystems = "bcd98974-b02a-5e2f-9ee0-a103f5c450dd"
 
 [compat]
 DocStringExtensions = "~0.8, ~0.9"
+Dates = "1"
+InfrastructureSystems = "^1.21"
+JuMP = "1"
+MPI = "^0.20"
+PowerSimulations = "^0.25"
+PowerSystems = "^3"
 julia = "^1.6"

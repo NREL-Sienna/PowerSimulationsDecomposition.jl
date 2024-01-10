@@ -1,14 +1,17 @@
 module PowerSimulationsDecomposition
 
 import PowerSimulations
+import PowerSystems
+import InfrastructureSystems
 import JuMP
 import Dates
 import MPI
 
 const PSI = PowerSimulations
+const PSY = PowerSystems
+const IS = InfrastructureSystems
 const PM = PSI.PM
-const PSY = PSI.PSY
-const IS = PSI.IS
+
 
 using DocStringExtensions
 @template (FUNCTIONS, METHODS) = """
