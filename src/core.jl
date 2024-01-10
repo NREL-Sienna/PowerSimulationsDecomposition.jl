@@ -1,5 +1,3 @@
-struct MultiRegionProblem <: PSI.DecisionProblem end
-
 abstract type DecompositionAlgorithm end
 
 struct SequentialAlgorithm <: DecompositionAlgorithm end

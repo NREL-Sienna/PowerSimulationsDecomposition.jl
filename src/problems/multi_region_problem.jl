@@ -1,3 +1,5 @@
+struct MultiRegionProblem <: PSI.DecisionProblem end
+
 function PSI.DecisionModel{MultiRegionProblem}(
     template::PSI.ProblemTemplate,
     sys::PSY.System,
