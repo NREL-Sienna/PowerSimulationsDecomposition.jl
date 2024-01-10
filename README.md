@@ -1,6 +1,6 @@
 # PowerSimulationsDecomposition.jl
 
-[![Master - CI](https://github.com/NREL-Sienna/PowerSimulationsDecomposition.jl/workflows/Master%20-%20CI/badge.svg)](https://github.com/NREL-Sienna/PowerSimulationsDecomposition.jl/actions/workflows/main-tests.yml)
+[![Main - CI](https://github.com/NREL-Sienna/PowerSimulationsDecomposition.jl/workflows/Main%20-%20CI/badge.svg)](https://github.com/NREL-Sienna/PowerSimulationsDecomposition.jl/actions/workflows/main-tests.yml)
 [![codecov](https://codecov.io/gh/NREL-Sienna/PowerSimulationsDecomposition.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/NREL-Sienna/PowerSimulationsDecomposition.jl)
 [![Documentation Build](https://github.com/NREL-Sienna/PowerSimulationsDecomposition.jl/workflows/Documentation/badge.svg?)](https://nrel-sienna.github.io/PowerSimulationsDecomposition.jl/stable)
 [<img src="https://img.shields.io/badge/slack-@Sienna/PSIDec-sienna.svg?logo=slack">](https://join.slack.com/t/nrel-sienna/shared_invite/zt-glam9vdu-o8A9TwZTZqqNTKHa7q3BpQ)

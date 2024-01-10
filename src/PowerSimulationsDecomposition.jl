@@ -1,5 +1,7 @@
 module PowerSimulationsDecomposition
 
+export MultiRegionProblem
+
 import PowerSimulations
 import PowerSystems
 import InfrastructureSystems
