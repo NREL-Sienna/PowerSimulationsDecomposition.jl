@@ -1,4 +1,4 @@
-using Documenter, SIIP - PACKAGE
+using Documenter, PowerSimulationsDecomposition
 
 pages = OrderedDict(
     "Welcome Page" => "index.md",
@@ -12,7 +12,7 @@ makedocs(
     modules=[PowerSimulationsDecomposition],
     format=Documenter.HTML(prettyurls=haskey(ENV, "GITHUB_ACTIONS")),
     sitename="PowerSimulationsDecomposition.jl",
-    authors="Freddy Mercury, Nikola Tesla, Leonard Bernestein",
+    authors="Jose Daniel Lara",
     pages=Any[p for p in pages],
 )
 
