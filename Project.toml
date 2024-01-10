@@ -1,6 +1,6 @@
-name = "SIIP-Package"
+name = "PowerSimulationsDecomposition"
 uuid = "bed98974-b02a-5e2f-9ee0-a103f5c450dd"
-authors = ["YOUR_NAME"]
+authors = ["Jose Daniel Lara"]
 version = "0.1.0"
 
 [deps]
