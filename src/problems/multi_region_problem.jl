@@ -13,7 +13,7 @@ function PSI.DecisionModel{MultiRegionProblem}(
         name = Symbol(name)
     end
     # Get these from the system later with subsystems
-    region_keys = ["1", "2,", "3"]
+    region_keys = ["1", "2,"]
     internal = PSI.ModelInternal(
         MultiOptimizationContainer(SequentialAlgorithm, sys, settings, PSY.Deterministic, region_keys),
     )
