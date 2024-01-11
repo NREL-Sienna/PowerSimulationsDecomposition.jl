@@ -8,12 +8,13 @@ import InfrastructureSystems
 import JuMP
 import Dates
 import MPI
+import MathOptInterface
 
 const PSI = PowerSimulations
 const PSY = PowerSystems
 const IS = InfrastructureSystems
 const PM = PSI.PM
-
+const MOI = MathOptInterface
 
 using DocStringExtensions
 @template (FUNCTIONS, METHODS) = """

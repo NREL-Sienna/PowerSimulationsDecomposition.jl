@@ -59,14 +59,18 @@ end
 
 function instantiate_network_model(model::PSI.DecisionModel{MultiRegionProblem})
     PSI.instantiate_network_model(model)
+    return
 end
 
 function PSI.build_model!(model::PSI.DecisionModel{MultiRegionProblem})
     build_impl!(PSI.get_optimization_container(model), PSI.get_template(model), PSI.get_system(model))
+    return
 end
 
 function PSI.solve_impl!(model::PSI.DecisionModel{MultiRegionProblem})
-    solve_impl!(PSI.get_optimization_container(model), PSI.get_system(model))
+    status = solve_impl!(PSI.get_optimization_container(model), PSI.get_system(model))
+    PSI.set_run_status!(model, status)
+    return
 end
 
 function PSI.write_model_dual_results!(store,

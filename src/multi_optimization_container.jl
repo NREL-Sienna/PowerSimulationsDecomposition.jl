@@ -20,7 +20,7 @@ mutable struct MultiOptimizationContainer{T<:DecompositionAlgorithm} <: PSI.Abst
     base_power::Float64
     optimizer_stats::PSI.OptimizerStats
     built_for_recurrent_solves::Bool
-    metadata::PSI.OptimizationContainerMetadata # Unclear about how to extend this correctly
+    metadata::PSI.OptimizationContainerMetadata
     default_time_series_type::Type{<:PSY.TimeSeriesData}  # Maybe isn't needed here
     mpi_info::Union{Nothing, MpiInfo}
 end
@@ -182,4 +182,7 @@ function init_optimization_container!(
     end
 
     return
+end
+
+function PSI.serialize_optimization_model(container::MultiOptimizationContainer, save_path::String)
 end
