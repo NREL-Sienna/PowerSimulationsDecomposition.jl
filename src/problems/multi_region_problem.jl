@@ -1,5 +1,24 @@
 struct MultiRegionProblem <: PSI.DecisionProblem end
 
+function get_n_subregions(sys::PSY.System)
+    # TODO: this function can be improved (less for loops)
+    subregions_ = String[]
+    for d in PSY.get_components(PSY.Component, sys)
+        if typeof(d) ∉ [PSY.Area, PSY.Arc, PSY.LoadZone]
+            if isempty(PSY.get_ext(d))
+                error("Field `ext` must be non empty if spatial decomposition is used.")
+            else
+                for sb in PSY.get_ext(d)["subregion"]
+                    if sb ∉ subregions_
+                        push!(subregions_, sb)
+                    end
+                end
+            end
+        end
+    end
+    return subregions_
+end
+
 function PSI.DecisionModel{MultiRegionProblem}(
     template::PSI.ProblemTemplate,
     sys::PSY.System,
@@ -12,13 +31,19 @@ function PSI.DecisionModel{MultiRegionProblem}(
     elseif name isa String
         name = Symbol(name)
     end
-    # Get these from the system later with subsystems
-    region_keys = ["1", "2,"]
+
+    # get number of system subregions
+    # NOTE: `ext` field for each component must be filled with a "subregion" key in the dictionary
+    region_keys = get_n_subregions(sys)
+
+    # define the optimization container with master and subproblems
     internal = PSI.ModelInternal(
         MultiOptimizationContainer(SequentialAlgorithm, sys, settings, PSY.Deterministic, region_keys),
     )
     template_ = deepcopy(template)
     PSI.finalize_template!(template_, sys)
+
+    # return multi-region decision model container
     return PSI.DecisionModel{MultiRegionProblem}(
         name,
         template_,

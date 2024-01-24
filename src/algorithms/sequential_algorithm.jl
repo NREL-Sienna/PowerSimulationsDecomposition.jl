@@ -1,19 +1,3 @@
-function system_modification(sys::PSY.System, index)
-    for component in get_components(Component, sys)
-        ext = get_ext(component)
-        if !haskey(ext, "subsystems")
-            continue
-        else
-            # needs to be careful with he buses becasue buses don't have "available"
-            if index in ext["subsystems"]
-                set_available!(component, false)
-            else
-                set_available!(component, true)
-            end
-        end
-    return
-end
-
 function build_impl!(
     container::MultiOptimizationContainer{SequentialAlgorithm},
     template::PSI.ProblemTemplate,
@@ -22,8 +6,7 @@ function build_impl!(
 
     for (index, sub_problem) in container.subproblems
         @debug "Building Subproblem $index" _group = PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
-        # Temporary
-        system_modification!(sys, index)
+        _system_modification!(sys, index)
         PSI.build_impl!(sub_problem, template, sys)
     end
 

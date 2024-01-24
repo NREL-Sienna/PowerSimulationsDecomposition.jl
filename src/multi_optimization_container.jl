@@ -37,6 +37,7 @@ function MultiOptimizationContainer(
         error("Default Time Series Type $U can't be abstract")
     end
 
+    # define dictionary containing the optimization container for the subregion
     subproblems = Dict{String, PSI.OptimizationContainer}()
     for k in sub_problem_keys
         subproblems[k] = PSI.OptimizationContainer(sys, settings, nothing, U)
@@ -147,6 +148,51 @@ function _finalize_jump_model!(container::MultiOptimizationContainer, settings::
     return
 end
 
+function _system_modification!(sys::PSY.System, index)
+    for component in PSY.get_components(PSY.Component, sys)
+        if typeof(component) <: PSY.Bus || :available in fieldnames(typeof(component))
+            sb_ = PSY.get_ext(component)["subregion"]
+            if typeof(component) <: PSY.Bus
+                if "original_type" ∉ keys(PSY.get_ext(component))
+                    component.ext["original_type"] = PSY.get_bustype(component)
+                end
+                if PSY.get_bustype(component) == PSY.ACBusTypes.ISOLATED
+                    if component.ext["original_type"] != PSY.ACBusTypes.ISOLATED
+                        PSY.set_bustype!(component, component.ext["original_type"])
+                    end
+                end
+                if index ∉ sb_
+                    PSY.set_bustype!(component, PSY.ACBusTypes.ISOLATED)
+                end
+            else
+                if "original_type" ∉ keys(PSY.get_ext(component))
+                    component.ext["original_available"] = PSY.get_available(component)
+                end
+                if index ∈ sb_
+                    PSY.set_available!(component, true)
+                else
+                    PSY.set_available!(component, false)
+                end
+                if typeof(component) <: PSY.Reserve
+                    @show (index, PSY.get_name(component), PSY.get_available(component))
+                end
+            end
+        end
+    end
+    return
+end
+
+function _restore_system!(sys::PSY.System)
+    for component in PSY.get_components(PSY.Component, sys)
+        if typeof(component) <: PSY.Bus
+            PSY.set_bustype!(component, PSY.get_ext(component)["original_type"])
+        elseif :available in fieldnames(typeof(component))
+            PSY.set_available!(component, PSY.get_ext(component)["original_available"])
+        end
+    end
+    return
+end
+
 function init_optimization_container!(
     container::MultiOptimizationContainer,
     ::Type{T},
@@ -175,11 +221,22 @@ function init_optimization_container!(
 
     _finalize_jump_model!(container, settings)
 
+    total_number_of_devices = length(PSI.get_available_components(PSY.Device, sys))
+    total_number_of_devices += length(PSI.get_available_components(PSY.ACBranch, sys))
+    @show total_number_of_devices
+
     for (index, sub_problem) in container.subproblems
         @debug "Initializing Container Subproblem $index" _group = PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
         sub_problem.settings = deepcopy(settings)
+        _system_modification!(sys, index)
+        total_number_of_devices = length(PSI.get_available_components(PSY.Device, sys))
+        total_number_of_devices += length(PSI.get_available_components(PSY.ACBranch, sys))
+        @show total_number_of_devices
         PSI.init_optimization_container!(sub_problem, T, sys)
     end
+
+    # restore original system
+    _restore_system!(sys)
 
     return
 end
