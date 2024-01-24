@@ -1,13 +1,14 @@
 function build_impl!(
     container::MultiOptimizationContainer{SequentialAlgorithm},
-    template::PSI.ProblemTemplate,
+    template::MultiProblemTemplate,
     sys::PSY.System,
 )
 
+    sub_templates = get_subtemplates(template)
     for (index, sub_problem) in container.subproblems
         @debug "Building Subproblem $index" _group = PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
         _system_modification!(sys, index)
-        PSI.build_impl!(sub_problem, template, sys)
+        PSI.build_impl!(sub_problem, sub_templates[index], sys)
     end
 
     build_main_problem!(container, template, sys)
@@ -19,7 +20,7 @@ end
 
 function build_main_problem!(
     container::MultiOptimizationContainer{SequentialAlgorithm},
-    template::PSI.ProblemTemplate,
+    template::MultiProblemTemplate,
     sys::PSY.System)
 end
 

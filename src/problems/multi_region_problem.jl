@@ -41,6 +41,7 @@ function PSI.DecisionModel{MultiRegionProblem}(
         MultiOptimizationContainer(SequentialAlgorithm, sys, settings, PSY.Deterministic, region_keys),
     )
     template_ = deepcopy(template)
+
     PSI.finalize_template!(template_, sys)
 
     # return multi-region decision model container
