@@ -229,9 +229,10 @@ function init_optimization_container!(
         @debug "Initializing Container Subproblem $index" _group = PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
         sub_problem.settings = deepcopy(settings)
         _system_modification!(sys, index)
-        total_number_of_devices = length(PSI.get_available_components(PSY.Device, sys))
-        total_number_of_devices += length(PSI.get_available_components(PSY.ACBranch, sys))
-        @show total_number_of_devices
+        total_number_of_gens = length(PSI.get_available_components(PSY.ThermalStandard, sys))
+        total_number_of_ac_buses = length(PSI.get_available_components(PSY.ACBranch, sys))
+        @show total_number_of_gens
+        @show total_number_of_ac_buses
         PSI.init_optimization_container!(sub_problem, T, sys)
     end
 
