@@ -17,6 +17,9 @@ function MultiProblemTemplate(
     return MultiProblemTemplate(PSI.ProblemTemplate(network), problem_keys)
 end
 
+function get_sub_templates(template::MultiProblemTemplate)
+    return values(template.sub_templates)
+end
 
 """
 Sets the network model in a template.
@@ -26,7 +29,7 @@ function PSI.set_network_model!(
     model::PSI.NetworkModel{<:PM.AbstractPowerModel},
 )
     PSI.set_network_model!(template.base_template, model)
-    for sub_template in values(sub_templates)
+    for sub_template in get_sub_templates(template)
         PSI.set_network_model!(sub_template, model)
     end
     return
@@ -42,7 +45,7 @@ function PSI.set_device_model!(
     formulation::Type{<:PSI.AbstractDeviceFormulation},
 )
     PSI.set_device_model!(template.base_template, PSI.DeviceModel(component_type, formulation))
-    for sub_template in values(sub_templates)
+    for sub_template in get_sub_templates(template)
         PSI.set_device_model!(sub_template, PSI.DeviceModel(component_type, formulation))
     end
     return
@@ -56,7 +59,7 @@ function PSI.set_device_model!(
     model::PSI.DeviceModel{<:PSY.Device, <:PSI.AbstractDeviceFormulation},
 )
     PSI.set_device_model!(template.base_template, model)
-    for sub_template in values(sub_templates)
+    for sub_template in get_sub_templates(template)
         PSI.set_device_model!(sub_template, model)
     end
     return
@@ -67,8 +70,8 @@ function PSI.set_device_model!(
     model::PSI.DeviceModel{<:PSY.Branch, <:PSI.AbstractDeviceFormulation},
 )
     PSI.set_device_model!(template.base_template, model)
-    for sub_template in values(sub_templates)
-        PSI.set_device_model!(sub_template, model)
+    for sub_template in get_sub_templates(template)
+        PSI.set_device_model!(sub_template, PSI.DeviceModel(component_type, formulation))
     end
     return
 end
@@ -88,12 +91,12 @@ function PSI.set_service_model!(
         service_name,
         ServiceModel(service_type, formulation; use_service_name = true),
     )
-    for sub_template in values(sub_templates)
+    for sub_template in get_sub_templates(template)
         PSI.set_service_model!(
-        sub_template,
-        service_name,
-        ServiceModel(service_type, formulation; use_service_name = true),
-    )
+            sub_template,
+            service_name,
+            ServiceModel(service_type, formulation; use_service_name = true),
+        )
     end
     return
 end
@@ -107,12 +110,12 @@ function PSI.set_service_model!(
     formulation::Type{<:PSI.AbstractServiceFormulation},
 )
     PSI.set_service_model!(template.base_template, PSI.ServiceModel(service_type, formulation))
-    for sub_template in values(sub_templates)
+    for sub_template in get_sub_templates(template)
         PSI.set_service_model!(
-        sub_template,
-        service_name,
-        PSI.ServiceModel(service_type, formulation),
-    )
+            sub_template,
+            service_name,
+            PSI.ServiceModel(service_type, formulation),
+        )
     end
     return
 end
@@ -123,6 +126,9 @@ function PSI.set_service_model!(
     model::PSI.ServiceModel{<:PSY.Service, <:PSI.AbstractServiceFormulation},
 )
     PSI.set_service_model!(template.base_template, service_name, model)
+    for sub_template in get_sub_templates(template)
+        PSI.set_service_model!(sub_template, service_name, model)
+    end
     return
 end
 
@@ -131,5 +137,8 @@ function PSI.set_service_model!(
     model::PSI.ServiceModel{<:PSY.Service, <:PSI.AbstractServiceFormulation},
 )
     PSI.set_service_model!(template.base_template, model)
+    for sub_template in get_sub_templates(template)
+        PSI.set_service_model!(sub_template, model)
+    end
     return
 end

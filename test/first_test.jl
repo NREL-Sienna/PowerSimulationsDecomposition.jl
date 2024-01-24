@@ -33,7 +33,6 @@ sys_twin_rts_DA = PSY.System("GDO systems/saved_main_RTS_GMLC_DA_final_sys_" * n
 
 # ! check reserves
 
-
 # modify the system -> add features in the "ext" field
 for d in PSY.get_components(PSY.Component, sys_twin_rts_DA)
     if typeof(d) <: PSY.Bus || :available in fieldnames(typeof(d))
@@ -82,9 +81,10 @@ storage_model = DeviceModel(
 
 # UC model
 template_uc =
-    ProblemTemplate(
+    MultiProblemTemplate(
         # NetworkModel(StandardPTDFModel; PTDF_matrix = PTDF(sys_twin_rts)),
         NetworkModel(DCPPowerModel; use_slacks=true),
+        ["1", "2"]
     )
 set_device_model!(template_uc, ThermalStandard, ThermalStandardUnitCommitment)
 set_device_model!(template_uc, RenewableDispatch, RenewableFullDispatch)
@@ -131,13 +131,13 @@ model = DecisionModel(
     calculate_conflict = true,
 )
 
-for b in get_components(ACBus, model.sys)
-    @show get_bustype(b)
-    @show get_bustype(b) == PSY.ACBusTypes.ISOLATED
-    # if get_bustype(b) == PSY.ACBusTypes.ISOLATED
-    #     @show get_name(b)
-    # end
-end
+# for b in get_components(ACBus, model.sys)
+#     @show get_bustype(b)
+#     @show get_bustype(b) == PSY.ACBusTypes.ISOLATED
+#     # if get_bustype(b) == PSY.ACBusTypes.ISOLATED
+#     #     @show get_name(b)
+#     # end
+# end
 
 # b = get_component(ACBus, model.sys, "Caesar")
 # get_bustype(b) == ACBusTypes.ISOLATED
