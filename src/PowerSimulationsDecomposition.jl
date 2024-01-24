@@ -1,6 +1,7 @@
 module PowerSimulationsDecomposition
 
 export MultiRegionProblem
+export MultiProblemTemplate
 
 import PowerSimulations
 import PowerSystems
@@ -22,8 +23,8 @@ using DocStringExtensions
                                  $(DOCSTRING)
                                  """
 
-
 include("core.jl")
+include("multiproblem_template.jl")
 include("multi_optimization_container.jl")
 include("algorithms/sequential_algorithm.jl")
 include("algorithms/mpi_parallel_algorithm.jl")

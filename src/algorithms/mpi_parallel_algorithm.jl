@@ -3,8 +3,8 @@ Default solve method for MultiOptimizationContainer
 """
 function solve_impl!(
     container::MultiOptimizationContainer{MPIParallelAlgorithm},
-    system::PSY.System
-    )
+    system::PSY.System,
+)
     # 1. Initialize MPI
     MPI.Init()
     try

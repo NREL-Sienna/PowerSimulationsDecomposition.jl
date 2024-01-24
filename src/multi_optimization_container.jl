@@ -1,4 +1,5 @@
-mutable struct MultiOptimizationContainer{T<:DecompositionAlgorithm} <: PSI.AbstractModelContainer
+mutable struct MultiOptimizationContainer{T <: DecompositionAlgorithm} <:
+               PSI.AbstractModelContainer
     main_JuMPmodel::JuMP.Model
     subproblems::Dict{String, PSI.OptimizationContainer}
     time_steps::UnitRange{Int}
@@ -30,7 +31,7 @@ function MultiOptimizationContainer(
     sys::PSY.System,
     settings::PSI.Settings,
     ::Type{U},
-    sub_problem_keys::Vector{String}
+    sub_problem_keys::Vector{String},
 ) where {T <: DecompositionAlgorithm, U <: PSY.TimeSeriesData}
     resolution = PSY.get_time_series_resolution(sys)
     if isabstracttype(U)
@@ -81,10 +82,12 @@ PSI.get_duals(container::MultiOptimizationContainer) = container.duals
 PSI.get_expressions(container::MultiOptimizationContainer) = container.expressions
 PSI.get_infeasibility_conflict(container::MultiOptimizationContainer) =
     container.infeasibility_conflict
-PSI.get_initial_conditions(container::MultiOptimizationContainer) = container.initial_conditions
+PSI.get_initial_conditions(container::MultiOptimizationContainer) =
+    container.initial_conditions
 PSI.get_initial_conditions_data(container::MultiOptimizationContainer) =
     container.initial_conditions_data
-PSI.get_initial_time(container::MultiOptimizationContainer) = PSI.get_initial_time(container.settings)
+PSI.get_initial_time(container::MultiOptimizationContainer) =
+    PSI.get_initial_time(container.settings)
 PSI.get_jump_model(container::MultiOptimizationContainer) = container.main_JuMPmodel
 PSI.get_metadata(container::MultiOptimizationContainer) = container.metadata
 PSI.get_optimizer_stats(container::MultiOptimizationContainer) = container.optimizer_stats
@@ -96,8 +99,9 @@ PSI.get_variables(container::MultiOptimizationContainer) = container.variables
 
 PSI.set_initial_conditions_data!(container::MultiOptimizationContainer, data) =
     container.initial_conditions_data = data
-    PSI.get_objective_expression(container::MultiOptimizationContainer) = container.objective_function
-    PSI.is_synchronized(container::MultiOptimizationContainer) =
+PSI.get_objective_expression(container::MultiOptimizationContainer) =
+    container.objective_function
+PSI.is_synchronized(container::MultiOptimizationContainer) =
     container.objective_function.synchronized
 PSI.set_time_steps!(container::MultiOptimizationContainer, time_steps::UnitRange{Int64}) =
     container.time_steps = time_steps
@@ -106,7 +110,6 @@ PSI.get_aux_variables(container::MultiOptimizationContainer) = container.aux_var
 PSI.get_base_power(container::MultiOptimizationContainer) = container.base_power
 PSI.get_constraints(container::MultiOptimizationContainer) = container.constraints
 
-
 function check_optimization_container(container::MultiOptimizationContainer)
     # Solve main problem
     for (index, sub_problem) in container.subproblems
@@ -114,7 +117,10 @@ function check_optimization_container(container::MultiOptimizationContainer)
     end
 end
 
-function _finalize_jump_model!(container::MultiOptimizationContainer, settings::PSI.Settings)
+function _finalize_jump_model!(
+    container::MultiOptimizationContainer,
+    settings::PSI.Settings,
+)
     @debug "Instantiating the JuMP model" _group = PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
     #=
     if PSI.built_for_recurrent_solves(container) && PSI.get_optimizer(settings) === nothing
@@ -182,8 +188,15 @@ function _system_modification!(sys::PSY.System, index)
             end
         end
     end
-    total_number_of_gens = length(PSY.get_components(x-> PSY.get_available(x), PSY.ThermalStandard, sys))
-    total_number_of_ac_buses = length(PSY.get_components(x -> PSY.get_bustype(x) != PSY.ACBusTypes.ISOLATED, PSY.ACBus, sys))
+    total_number_of_gens =
+        length(PSY.get_components(x -> PSY.get_available(x), PSY.ThermalStandard, sys))
+    total_number_of_ac_buses = length(
+        PSY.get_components(
+            x -> PSY.get_bustype(x) != PSY.ACBusTypes.ISOLATED,
+            PSY.ACBus,
+            sys,
+        ),
+    )
     @show "Inside Mod Function Components using PSY functions"
     @show total_number_of_gens
     @show total_number_of_ac_buses
@@ -236,10 +249,12 @@ function init_optimization_container!(
     @show total_number_of_ac_buses
 
     for (index, sub_problem) in container.subproblems
-        @debug "Initializing Container Subproblem $index" _group = PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
+        @debug "Initializing Container Subproblem $index" _group =
+            PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
         sub_problem.settings = deepcopy(settings)
         _system_modification!(sys, index)
-        total_number_of_gens = length(PSI.get_available_components(PSY.ThermalStandard, sys))
+        total_number_of_gens =
+            length(PSI.get_available_components(PSY.ThermalStandard, sys))
         total_number_of_ac_buses = length(PSI.get_available_components(PSY.ACBus, sys))
         @show "Before Init number of components using PSI functions"
         @show total_number_of_gens
@@ -253,5 +268,7 @@ function init_optimization_container!(
     return
 end
 
-function PSI.serialize_optimization_model(container::MultiOptimizationContainer, save_path::String)
-end
+function PSI.serialize_optimization_model(
+    container::MultiOptimizationContainer,
+    save_path::String,
+) end
