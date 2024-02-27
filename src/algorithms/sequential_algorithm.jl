@@ -3,10 +3,8 @@ function build_impl!(
     template::MultiProblemTemplate,
     sys::PSY.System,
 )
-    sub_templates = get_subtemplates(template)
-    for (index, sub_problem) in container.subproblems
+    for (index, sub_problem) in get_sub_templates(template)
         @debug "Building Subproblem $index" _group = PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
-        _system_modification!(sys, index)
         PSI.build_impl!(sub_problem, sub_templates[index], sys)
     end
 

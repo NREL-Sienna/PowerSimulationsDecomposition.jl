@@ -154,66 +154,6 @@ function _finalize_jump_model!(
     return
 end
 
-function _system_modification!(sys::PSY.System, index)
-    for component in PSY.get_components(PSY.Component, sys)
-        if typeof(component) <: PSY.Bus || :available in fieldnames(typeof(component))
-            sb_ = PSY.get_ext(component)["subregion"]
-            if typeof(component) <: PSY.Bus
-                if "original_type" ∉ keys(PSY.get_ext(component))
-                    component.ext["original_type"] = PSY.get_bustype(component)
-                end
-                if PSY.get_bustype(component) == PSY.ACBusTypes.ISOLATED
-                    if component.ext["original_type"] != PSY.ACBusTypes.ISOLATED
-                        PSY.set_bustype!(component, component.ext["original_type"])
-                    end
-                end
-                if index ∉ sb_
-                    #@error "Changed $(summary(component)) to ISOLATED"
-                    PSY.set_bustype!(component, PSY.ACBusTypes.ISOLATED)
-                end
-            else
-                if "original_type" ∉ keys(PSY.get_ext(component))
-                    component.ext["original_available"] = PSY.get_available(component)
-                end
-                if index ∈ sb_
-                    #@error "Changed $(summary(component)) to True"
-                    PSY.set_available!(component, true)
-                else
-                    #@error "Changed $(summary(component)) to False"
-                    PSY.set_available!(component, false)
-                end
-                if typeof(component) <: PSY.Reserve
-                    @show (index, PSY.get_name(component), PSY.get_available(component))
-                end
-            end
-        end
-    end
-    total_number_of_gens =
-        length(PSY.get_components(x -> PSY.get_available(x), PSY.ThermalStandard, sys))
-    total_number_of_ac_buses = length(
-        PSY.get_components(
-            x -> PSY.get_bustype(x) != PSY.ACBusTypes.ISOLATED,
-            PSY.ACBus,
-            sys,
-        ),
-    )
-    @show "Inside Mod Function Components using PSY functions"
-    @show total_number_of_gens
-    @show total_number_of_ac_buses
-    return
-end
-
-function _restore_system!(sys::PSY.System)
-    for component in PSY.get_components(PSY.Component, sys)
-        if typeof(component) <: PSY.Bus
-            PSY.set_bustype!(component, PSY.get_ext(component)["original_type"])
-        elseif :available in fieldnames(typeof(component))
-            PSY.set_available!(component, PSY.get_ext(component)["original_available"])
-        end
-    end
-    return
-end
-
 function init_optimization_container!(
     container::MultiOptimizationContainer,
     ::Type{T},
@@ -244,26 +184,16 @@ function init_optimization_container!(
 
     total_number_of_gens = length(PSI.get_available_components(PSY.ThermalStandard, sys))
     total_number_of_ac_buses = length(PSI.get_available_components(PSY.ACBus, sys))
-    @show "Total Components"
-    @show total_number_of_gens
-    @show total_number_of_ac_buses
 
     for (index, sub_problem) in container.subproblems
         @debug "Initializing Container Subproblem $index" _group =
             PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
         sub_problem.settings = deepcopy(settings)
-        _system_modification!(sys, index)
         total_number_of_gens =
             length(PSI.get_available_components(PSY.ThermalStandard, sys))
         total_number_of_ac_buses = length(PSI.get_available_components(PSY.ACBus, sys))
-        @show "Before Init number of components using PSI functions"
-        @show total_number_of_gens
-        @show total_number_of_ac_buses
         PSI.init_optimization_container!(sub_problem, T, sys)
     end
-
-    # restore original system
-    _restore_system!(sys)
 
     return
 end

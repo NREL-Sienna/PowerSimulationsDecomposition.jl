@@ -84,7 +84,11 @@ end
 function handle_initial_conditions!(model::PSI.DecisionModel{MultiRegionProblem}) end
 
 function instantiate_network_model(model::PSI.DecisionModel{MultiRegionProblem})
-    PSI.instantiate_network_model(model)
+    template = PSI.get_template(model)
+    for sub_template in get_sub_templates(template)
+        network_model = PSI.get_network_model(sub_template)
+        PSI.instantiate_network_model(network_model, PSI.get_system(model))
+    end
     return
 end
 
