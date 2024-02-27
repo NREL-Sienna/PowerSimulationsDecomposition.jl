@@ -29,5 +29,6 @@ include("multi_optimization_container.jl")
 include("algorithms/sequential_algorithm.jl")
 include("algorithms/mpi_parallel_algorithm.jl")
 include("problems/multi_region_problem.jl")
+include("print.jl")
 
 end

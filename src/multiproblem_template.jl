@@ -1,6 +1,15 @@
-struct MultiProblemTemplate
+struct MultiProblemTemplate <: PSI.AbstractProblemTemplate
     base_template::PSI.ProblemTemplate
     sub_templates::Dict{String, PSI.ProblemTemplate}
+end
+
+function Base.isempty(template::MultiProblemTemplate)
+    for template in values(template.sub_templates)
+        if !isempty(template.sub_templates)
+            return false
+        end
+    end
+    return isempty(template.base_template)
 end
 
 function MultiProblemTemplate(
@@ -141,4 +150,10 @@ function PSI.set_service_model!(
         PSI.set_service_model!(sub_template, model)
     end
     return
+end
+
+function PSI.finalize_template!(template::MultiProblemTemplate, sys::PSY.System)
+    for sub_template in get_sub_templates(template)
+        PSI.finalize_template!(sub_template, sys)
+    end
 end
