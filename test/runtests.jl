@@ -14,7 +14,6 @@ using StorageSystemsSimulations
 using Test
 using Logging
 
-
 import Aqua
 Aqua.test_unbound_args(PowerSimulationsDecomposition)
 Aqua.test_undefined_exports(PowerSimulationsDecomposition)

@@ -3,6 +3,23 @@ struct MultiProblemTemplate <: PSI.AbstractProblemTemplate
     sub_templates::Dict{String, PSI.ProblemTemplate}
 end
 
+function MultiProblemTemplate(
+    base_template::PSI.ProblemTemplate,
+    problem_keys::Vector{String},
+)
+    sub_templates = Dict{String, PSI.ProblemTemplate}(
+        k => deepcopy(base_template) for k in problem_keys
+    )
+    return MultiProblemTemplate(base_template, sub_templates)
+end
+
+function MultiProblemTemplate(
+    network::PSI.NetworkModel{T},
+    problem_keys::Vector{String},
+) where {T <: PM.AbstractPowerModel}
+    return MultiProblemTemplate(PSI.ProblemTemplate(network), problem_keys)
+end
+
 function Base.isempty(template::MultiProblemTemplate)
     for template in values(template.sub_templates)
         if !isempty(template.sub_templates)
@@ -12,18 +29,9 @@ function Base.isempty(template::MultiProblemTemplate)
     return isempty(template.base_template)
 end
 
-function MultiProblemTemplate(
-    base_template::PSI.ProblemTemplate,
-    problem_keys::Vector{String},
-)
-    sub_templates = Dict{String, PSI.ProblemTemplate}(k => deepcopy(base_template) for k in problem_keys)
-    return MultiProblemTemplate(base_template, sub_templates)
-end
-
-function MultiProblemTemplate(
-    network::PSI.NetworkModel{T},
-    problem_keys::Vector{String},) where {T <: PM.AbstractPowerModel}
-    return MultiProblemTemplate(PSI.ProblemTemplate(network), problem_keys)
+function PSI.get_network_formulation(template::MultiProblemTemplate)
+    bt = template.base_template
+    return PSI.get_network_formulation(PSI.get_network_model(bt))
 end
 
 function get_sub_templates(template::MultiProblemTemplate)
@@ -53,7 +61,10 @@ function PSI.set_device_model!(
     component_type::Type{<:PSY.Device},
     formulation::Type{<:PSI.AbstractDeviceFormulation},
 )
-    PSI.set_device_model!(template.base_template, PSI.DeviceModel(component_type, formulation))
+    PSI.set_device_model!(
+        template.base_template,
+        PSI.DeviceModel(component_type, formulation),
+    )
     for sub_template in get_sub_templates(template)
         PSI.set_device_model!(sub_template, PSI.DeviceModel(component_type, formulation))
     end
@@ -98,13 +109,13 @@ function PSI.set_service_model!(
     PSI.set_service_model!(
         template.base_template,
         service_name,
-        ServiceModel(service_type, formulation; use_service_name = true),
+        ServiceModel(service_type, formulation; use_service_name=true),
     )
     for sub_template in get_sub_templates(template)
         PSI.set_service_model!(
             sub_template,
             service_name,
-            ServiceModel(service_type, formulation; use_service_name = true),
+            ServiceModel(service_type, formulation; use_service_name=true),
         )
     end
     return
@@ -118,7 +129,10 @@ function PSI.set_service_model!(
     service_type::Type{<:PSY.Service},
     formulation::Type{<:PSI.AbstractServiceFormulation},
 )
-    PSI.set_service_model!(template.base_template, PSI.ServiceModel(service_type, formulation))
+    PSI.set_service_model!(
+        template.base_template,
+        PSI.ServiceModel(service_type, formulation),
+    )
     for sub_template in get_sub_templates(template)
         PSI.set_service_model!(
             sub_template,

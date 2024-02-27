@@ -20,25 +20,26 @@ function get_n_subregions(sys::PSY.System)
 end
 
 function PSI.DecisionModel{MultiRegionProblem}(
-    template::PSI.ProblemTemplate,
+    template::MultiProblemTemplate,
     sys::PSY.System,
-    settings::PSI.Settings,
-    ::Union{Nothing,JuMP.Model}=nothing;
-    name=nothing,
+    ::Union{Nothing, JuMP.Model}=nothing;
+    kwargs...,
 )
-    if name === nothing
-        name = nameof(MultiRegionProblem)
-    elseif name isa String
-        name = Symbol(name)
-    end
-
+    name = Symbol(get(kwargs, :name, nameof(MultiRegionProblem)))
+    settings = PSI.Settings(sys; [k for k in kwargs if first(k) ∉ [:name]]...)
     # get number of system subregions
     # NOTE: `ext` field for each component must be filled with a "subregion" key in the dictionary
     region_keys = get_n_subregions(sys)
 
     # define the optimization container with master and subproblems
     internal = PSI.ModelInternal(
-        MultiOptimizationContainer(SequentialAlgorithm, sys, settings, PSY.Deterministic, region_keys),
+        MultiOptimizationContainer(
+            SequentialAlgorithm,
+            sys,
+            settings,
+            PSY.Deterministic,
+            region_keys,
+        ),
     )
     template_ = deepcopy(template)
 
@@ -51,7 +52,7 @@ function PSI.DecisionModel{MultiRegionProblem}(
         sys,
         internal,
         PSI.DecisionModelStore(),
-        Dict{String,Any}(),
+        Dict{String, Any}(),
     )
 end
 
@@ -80,8 +81,7 @@ function build_pre_step!(model::PSI.DecisionModel{MultiRegionProblem})
     return
 end
 
-function handle_initial_conditions!(model::PSI.DecisionModel{MultiRegionProblem})
-end
+function handle_initial_conditions!(model::PSI.DecisionModel{MultiRegionProblem}) end
 
 function instantiate_network_model(model::PSI.DecisionModel{MultiRegionProblem})
     PSI.instantiate_network_model(model)
@@ -89,7 +89,11 @@ function instantiate_network_model(model::PSI.DecisionModel{MultiRegionProblem})
 end
 
 function PSI.build_model!(model::PSI.DecisionModel{MultiRegionProblem})
-    build_impl!(PSI.get_optimization_container(model), PSI.get_template(model), PSI.get_system(model))
+    build_impl!(
+        PSI.get_optimization_container(model),
+        PSI.get_template(model),
+        PSI.get_system(model),
+    )
     return
 end
 
@@ -99,33 +103,38 @@ function PSI.solve_impl!(model::PSI.DecisionModel{MultiRegionProblem})
     return
 end
 
-function PSI.write_model_dual_results!(store,
+function PSI.write_model_dual_results!(
+    store,
     model::PSI.DecisionModel{MultiRegionProblem},
     index::PSI.DecisionModelIndexType,
     update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol,Any},Nothing},)
-end
-function PSI.write_model_parameter_results!(store,
+    export_params::Union{Dict{Symbol, Any}, Nothing},
+) end
+function PSI.write_model_parameter_results!(
+    store,
     model::PSI.DecisionModel{MultiRegionProblem},
     index::PSI.DecisionModelIndexType,
     update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol,Any},Nothing},)
-end
-function PSI.write_model_variable_results!(store,
+    export_params::Union{Dict{Symbol, Any}, Nothing},
+) end
+function PSI.write_model_variable_results!(
+    store,
     model::PSI.DecisionModel{MultiRegionProblem},
     index::PSI.DecisionModelIndexType,
     update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol,Any},Nothing},)
-end
-function PSI.write_model_aux_variable_results!(store,
+    export_params::Union{Dict{Symbol, Any}, Nothing},
+) end
+function PSI.write_model_aux_variable_results!(
+    store,
     model::PSI.DecisionModel{MultiRegionProblem},
     index::PSI.DecisionModelIndexType,
     update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol,Any},Nothing},)
-end
-function PSI.write_model_expression_results!(store,
+    export_params::Union{Dict{Symbol, Any}, Nothing},
+) end
+function PSI.write_model_expression_results!(
+    store,
     model::PSI.DecisionModel{MultiRegionProblem},
     index::PSI.DecisionModelIndexType,
     update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol,Any},Nothing},)
-end
+    export_params::Union{Dict{Symbol, Any}, Nothing},
+) end

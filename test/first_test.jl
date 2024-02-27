@@ -29,7 +29,8 @@ const PSB = PowerSystemCaseBuilder
 
 # consider the use of custom system used for GDO case
 name_ = "AC_inter"
-sys_twin_rts_DA = PSY.System("GDO systems/saved_main_RTS_GMLC_DA_final_sys_" * name_ * ".json")   # day ahead 
+sys_twin_rts_DA =
+    PSY.System("GDO systems/saved_main_RTS_GMLC_DA_final_sys_" * name_ * ".json")   # day ahead 
 
 # ! check reserves
 
@@ -57,7 +58,6 @@ for b in [get_from(arc_), get_to(arc_)]
     PSY.set_ext!(b, Dict("subregion" => Set(["1", "2"])))
 end
 
-
 if name_ == "HVDC_inter"
     HVDC_inter = true
 else
@@ -75,17 +75,16 @@ storage_model = DeviceModel(
         "cycling_limits" => false,
         "energy_target" => false,
         "complete_coverage" => false,
-        "regularization" => true
+        "regularization" => true,
     ),
 )
 
 # UC model
-template_uc =
-    MultiProblemTemplate(
-        # NetworkModel(StandardPTDFModel; PTDF_matrix = PTDF(sys_twin_rts)),
-        NetworkModel(DCPPowerModel; use_slacks=true),
-        ["1", "2"]
-    )
+template_uc = MultiProblemTemplate(
+    # NetworkModel(StandardPTDFModel; PTDF_matrix = PTDF(sys_twin_rts)),
+    NetworkModel(DCPPowerModel; use_slacks=true),
+    ["1", "2"],
+)
 set_device_model!(template_uc, ThermalStandard, ThermalStandardUnitCommitment)
 set_device_model!(template_uc, RenewableDispatch, RenewableFullDispatch)
 set_device_model!(template_uc, RenewableFix, FixedOutput)
@@ -98,11 +97,11 @@ set_device_model!(template_uc, HydroEnergyReservoir, FixedOutput)
 set_device_model!(template_uc, storage_model)
 set_service_model!(
     template_uc,
-    ServiceModel(VariableReserve{ReserveUp}, RangeReserve; use_slacks = true),
+    ServiceModel(VariableReserve{ReserveUp}, RangeReserve; use_slacks=true),
 )
 set_service_model!(
     template_uc,
-    ServiceModel(VariableReserve{ReserveDown}, RangeReserve; use_slacks = true),
+    ServiceModel(VariableReserve{ReserveDown}, RangeReserve; use_slacks=true),
 )
 
 # add the HVDC line in case is present
@@ -116,19 +115,19 @@ model = DecisionModel(
     MultiRegionProblem,
     template_uc,
     sys_twin_rts_DA;
-    name = "UC",
-    optimizer = optimizer_with_attributes(
-        Xpress.Optimizer, 
+    name="UC",
+    optimizer=optimizer_with_attributes(
+        Xpress.Optimizer,
         "MIPRELSTOP" => 0.01,       # Set the relative mip gap tolerance
         "MAXMEMORYSOFT" => 600000,   # Set the maximum amount of memory the solver can use (in MB)
     ),
-    system_to_file = false,
-    initialize_model = true,
-    optimizer_solve_log_print = true,
-    direct_mode_optimizer = true,
-    rebuild_model = false,
-    store_variable_names = true,
-    calculate_conflict = true,
+    system_to_file=false,
+    initialize_model=true,
+    optimizer_solve_log_print=true,
+    direct_mode_optimizer=true,
+    rebuild_model=false,
+    store_variable_names=true,
+    calculate_conflict=true,
 )
 
 # for b in get_components(ACBus, model.sys)
@@ -145,5 +144,5 @@ model = DecisionModel(
 
 # PowerSimulationsDecomposition.instantiate_network_model(model)
 
-build!(model; console_level = Logging.Info, output_dir = mktempdir())
-solve!(model; console_level = Logging.Info)
+build!(model; console_level=Logging.Info, output_dir=mktempdir())
+solve!(model; console_level=Logging.Info)

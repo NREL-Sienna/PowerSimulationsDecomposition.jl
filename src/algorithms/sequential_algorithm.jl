@@ -23,8 +23,7 @@ function build_main_problem!(
     sys::PSY.System,
 ) end
 
-function write_results_to_main_container(container::MultiOptimizationContainer)
-end
+function write_results_to_main_container(container::MultiOptimizationContainer) end
 
 function solve_impl!(
     container::MultiOptimizationContainer{SequentialAlgorithm},
