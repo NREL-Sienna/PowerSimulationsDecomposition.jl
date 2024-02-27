@@ -35,7 +35,11 @@ function PSI.get_network_formulation(template::MultiProblemTemplate)
 end
 
 function get_sub_templates(template::MultiProblemTemplate)
-    return values(template.sub_templates)
+    return template.sub_templates
+end
+
+function get_sub_problem_keys(template::MultiProblemTemplate)
+    return sort!(collect(keys(get_sub_templates(template))))
 end
 
 """
@@ -65,7 +69,7 @@ function PSI.set_device_model!(
         template.base_template,
         PSI.DeviceModel(component_type, formulation),
     )
-    for sub_template in get_sub_templates(template)
+    for (_, sub_template) in get_sub_templates(template)
         PSI.set_device_model!(sub_template, PSI.DeviceModel(component_type, formulation))
     end
     return
@@ -150,7 +154,7 @@ function PSI.set_service_model!(
 )
     PSI.set_service_model!(template.base_template, service_name, model)
     for sub_template in get_sub_templates(template)
-        PSI.set_service_model!(sub_template, service_name, model)
+        PSI.set_service_model!(sub_template, service_name, deepcopy(model))
     end
     return
 end
@@ -160,14 +164,17 @@ function PSI.set_service_model!(
     model::PSI.ServiceModel{<:PSY.Service, <:PSI.AbstractServiceFormulation},
 )
     PSI.set_service_model!(template.base_template, model)
-    for sub_template in get_sub_templates(template)
-        PSI.set_service_model!(sub_template, model)
+    for (_, sub_template) in get_sub_templates(template)
+        PSI.set_service_model!(sub_template, deepcopy(model))
     end
     return
 end
 
-function PSI.finalize_template!(template::MultiProblemTemplate, sys::PSY.System)
-    for sub_template in get_sub_templates(template)
+function finalize_template!(template::MultiProblemTemplate, sys::PSY.System)
+    PSI.finalize_template!(template.base_template, sys)
+    for (ix, sub_template) in get_sub_templates(template)
+        @debug "Finalizing template for sub probem $ix"
         PSI.finalize_template!(sub_template, sys)
     end
+    return
 end

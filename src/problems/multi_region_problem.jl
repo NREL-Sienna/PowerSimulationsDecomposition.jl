@@ -1,24 +1,5 @@
 struct MultiRegionProblem <: PSI.DecisionProblem end
 
-function get_n_subregions(sys::PSY.System)
-    # TODO: this function can be improved (less for loops)
-    subregions_ = String[]
-    for d in PSY.get_components(PSY.Component, sys)
-        if typeof(d) ∉ [PSY.Area, PSY.Arc, PSY.LoadZone]
-            if isempty(PSY.get_ext(d))
-                error("Field `ext` must be non empty if spatial decomposition is used.")
-            else
-                for sb in PSY.get_ext(d)["subregion"]
-                    if sb ∉ subregions_
-                        push!(subregions_, sb)
-                    end
-                end
-            end
-        end
-    end
-    return subregions_
-end
-
 function PSI.DecisionModel{MultiRegionProblem}(
     template::MultiProblemTemplate,
     sys::PSY.System,
@@ -27,23 +8,18 @@ function PSI.DecisionModel{MultiRegionProblem}(
 )
     name = Symbol(get(kwargs, :name, nameof(MultiRegionProblem)))
     settings = PSI.Settings(sys; [k for k in kwargs if first(k) ∉ [:name]]...)
-    # get number of system subregions
-    # NOTE: `ext` field for each component must be filled with a "subregion" key in the dictionary
-    region_keys = get_n_subregions(sys)
-
-    # define the optimization container with master and subproblems
     internal = PSI.ModelInternal(
         MultiOptimizationContainer(
             SequentialAlgorithm,
             sys,
             settings,
             PSY.Deterministic,
-            region_keys,
+            get_sub_problem_keys(template),
         ),
     )
     template_ = deepcopy(template)
 
-    PSI.finalize_template!(template_, sys)
+    finalize_template!(template_, sys)
 
     # return multi-region decision model container
     return PSI.DecisionModel{MultiRegionProblem}(
@@ -85,7 +61,7 @@ function handle_initial_conditions!(model::PSI.DecisionModel{MultiRegionProblem}
 
 function instantiate_network_model(model::PSI.DecisionModel{MultiRegionProblem})
     template = PSI.get_template(model)
-    for sub_template in get_sub_templates(template)
+    for (_, sub_template) in get_sub_templates(template)
         network_model = PSI.get_network_model(sub_template)
         PSI.instantiate_network_model(network_model, PSI.get_system(model))
     end

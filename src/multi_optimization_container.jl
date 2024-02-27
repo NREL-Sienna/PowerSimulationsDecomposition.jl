@@ -110,6 +110,10 @@ PSI.get_aux_variables(container::MultiOptimizationContainer) = container.aux_var
 PSI.get_base_power(container::MultiOptimizationContainer) = container.base_power
 PSI.get_constraints(container::MultiOptimizationContainer) = container.constraints
 
+function get_subproblem(container::MultiOptimizationContainer, id::String)
+    return container.subproblems[id]
+end
+
 function check_optimization_container(container::MultiOptimizationContainer)
     # Solve main problem
     for (index, sub_problem) in container.subproblems

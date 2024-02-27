@@ -3,9 +3,9 @@ function build_impl!(
     template::MultiProblemTemplate,
     sys::PSY.System,
 )
-    for (index, sub_problem) in get_sub_templates(template)
-        @debug "Building Subproblem $index" _group = PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
-        PSI.build_impl!(sub_problem, sub_templates[index], sys)
+    for (index, sub_template) in get_sub_templates(template)
+        @info "Building Subproblem $index" _group = PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
+        PSI.build_impl!(get_subproblem(container, index), sub_template, sys)
     end
 
     build_main_problem!(container, template, sys)
