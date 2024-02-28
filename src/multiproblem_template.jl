@@ -3,6 +3,11 @@ struct MultiProblemTemplate <: PSI.AbstractProblemTemplate
     sub_templates::Dict{String, PSI.ProblemTemplate}
 end
 
+PSI.get_device_models(template::MultiProblemTemplate) = template.base_template.devices
+PSI.get_branch_models(template::MultiProblemTemplate) = template.base_template.branches
+PSI.get_service_models(template::MultiProblemTemplate) = template.base_template.services
+PSI.get_network_model(template::MultiProblemTemplate) = template.base_template.network_model
+
 function MultiProblemTemplate(
     base_template::PSI.ProblemTemplate,
     problem_keys::Vector{String},

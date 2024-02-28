@@ -160,9 +160,9 @@ end
 
 function init_optimization_container!(
     container::MultiOptimizationContainer,
-    ::Type{T},
+    network_model::PSI.NetworkModel{<:PM.AbstractPowerModel},
     sys::PSY.System,
-) where {T <: PM.AbstractPowerModel}
+)
     PSY.set_units_base_system!(sys, "SYSTEM_BASE")
     # The order of operations matter
     settings = PSI.get_settings(container)
@@ -190,7 +190,7 @@ function init_optimization_container!(
         @debug "Initializing Container Subproblem $index" _group =
             PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
         sub_problem.settings = deepcopy(settings)
-        PSI.init_optimization_container!(sub_problem, T, sys)
+        PSI.init_optimization_container!(sub_problem, network_model, sys)
     end
 
     return

@@ -48,7 +48,7 @@ function build_pre_step!(model::PSI.DecisionModel{MultiRegionProblem})
     @info "Initializing Optimization Container For a DecisionModel"
     init_optimization_container!(
         PSI.get_optimization_container(model),
-        PSI.get_network_formulation(PSI.get_template(model)),
+        PSI.get_network_model(PSI.get_template(model)),
         PSI.get_system(model),
     )
     @info "Initializing ModelStoreParams"
