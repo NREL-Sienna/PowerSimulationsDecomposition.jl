@@ -39,7 +39,7 @@ function PSI.build_impl!(model::PSI.DecisionModel{MultiRegionProblem})
     handle_initial_conditions!(model)
     PSI.build_model!(model)
     # Might need custom implementation for this container type
-    #serialize_metadata!(get_optimization_container(model), get_output_dir(model))
+    # serialize_metadata!(get_optimization_container(model), get_output_dir(model))
     PSI.log_values(PSI.get_settings(model))
     return
 end
@@ -61,8 +61,9 @@ function handle_initial_conditions!(model::PSI.DecisionModel{MultiRegionProblem}
 
 function instantiate_network_model(model::PSI.DecisionModel{MultiRegionProblem})
     template = PSI.get_template(model)
-    for (_, sub_template) in get_sub_templates(template)
+    for (id, sub_template) in get_sub_templates(template)
         network_model = PSI.get_network_model(sub_template)
+        PSI.set_subsystem!(network_model, id)
         PSI.instantiate_network_model(network_model, PSI.get_system(model))
     end
     return

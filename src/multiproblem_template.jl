@@ -50,7 +50,8 @@ function PSI.set_network_model!(
     model::PSI.NetworkModel{<:PM.AbstractPowerModel},
 )
     PSI.set_network_model!(template.base_template, model)
-    for sub_template in get_sub_templates(template)
+    for (id, sub_template) in get_sub_templates(template)
+        PSI.set_subsystem!(model, id)
         PSI.set_network_model!(sub_template, model)
     end
     return
@@ -69,8 +70,10 @@ function PSI.set_device_model!(
         template.base_template,
         PSI.DeviceModel(component_type, formulation),
     )
-    for (_, sub_template) in get_sub_templates(template)
-        PSI.set_device_model!(sub_template, PSI.DeviceModel(component_type, formulation))
+    for (id, sub_template) in get_sub_templates(template)
+        network_model = PSI.DeviceModel(component_type, formulation)
+        PSI.set_subsystem!(network_model, id)
+        PSI.set_device_model!(sub_template, network_model)
     end
     return
 end
@@ -83,7 +86,8 @@ function PSI.set_device_model!(
     model::PSI.DeviceModel{<:PSY.Device, <:PSI.AbstractDeviceFormulation},
 )
     PSI.set_device_model!(template.base_template, model)
-    for sub_template in get_sub_templates(template)
+    for (id, sub_template) in get_sub_templates(template)
+        PSI.set_subsystem!(model, id)
         PSI.set_device_model!(sub_template, model)
     end
     return
@@ -94,7 +98,8 @@ function PSI.set_device_model!(
     model::PSI.DeviceModel{<:PSY.Branch, <:PSI.AbstractDeviceFormulation},
 )
     PSI.set_device_model!(template.base_template, model)
-    for sub_template in get_sub_templates(template)
+    for (id, sub_template) in get_sub_templates(template)
+        PSI.set_subsystem!(model, id)
         PSI.set_device_model!(sub_template, PSI.DeviceModel(component_type, formulation))
     end
     return
@@ -115,11 +120,13 @@ function PSI.set_service_model!(
         service_name,
         ServiceModel(service_type, formulation; use_service_name=true),
     )
-    for sub_template in get_sub_templates(template)
+    for (id, sub_template) in get_sub_templates(template)
+        service_model = ServiceModel(service_type, formulation; use_service_name=true)
+        PSI.set_subsystem!(service_model, id)
         PSI.set_service_model!(
             sub_template,
             service_name,
-            ServiceModel(service_type, formulation; use_service_name=true),
+            service_model,
         )
     end
     return
@@ -137,11 +144,13 @@ function PSI.set_service_model!(
         template.base_template,
         PSI.ServiceModel(service_type, formulation),
     )
-    for sub_template in get_sub_templates(template)
+    for (id, sub_template) in get_sub_templates(template)
+        service_model = ServiceModel(service_type, formulation)
+        PSI.set_subsystem!(service_model, id)
         PSI.set_service_model!(
             sub_template,
             service_name,
-            PSI.ServiceModel(service_type, formulation),
+            service_model,
         )
     end
     return
@@ -153,7 +162,8 @@ function PSI.set_service_model!(
     model::PSI.ServiceModel{<:PSY.Service, <:PSI.AbstractServiceFormulation},
 )
     PSI.set_service_model!(template.base_template, service_name, model)
-    for sub_template in get_sub_templates(template)
+    for (id, sub_template) in get_sub_templates(template)
+        PSI.set_subsystem!(model, id)
         PSI.set_service_model!(sub_template, service_name, deepcopy(model))
     end
     return
@@ -164,7 +174,8 @@ function PSI.set_service_model!(
     model::PSI.ServiceModel{<:PSY.Service, <:PSI.AbstractServiceFormulation},
 )
     PSI.set_service_model!(template.base_template, model)
-    for (_, sub_template) in get_sub_templates(template)
+    for (id, sub_template) in get_sub_templates(template)
+        PSI.set_subsystem!(model, id)
         PSI.set_service_model!(sub_template, deepcopy(model))
     end
     return
