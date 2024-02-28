@@ -186,16 +186,10 @@ function init_optimization_container!(
 
     _finalize_jump_model!(container, settings)
 
-    total_number_of_gens = length(PSI.get_available_components(PSY.ThermalStandard, sys))
-    total_number_of_ac_buses = length(PSI.get_available_components(PSY.ACBus, sys))
-
     for (index, sub_problem) in container.subproblems
         @debug "Initializing Container Subproblem $index" _group =
             PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
         sub_problem.settings = deepcopy(settings)
-        total_number_of_gens =
-            length(PSI.get_available_components(PSY.ThermalStandard, sys))
-        total_number_of_ac_buses = length(PSI.get_available_components(PSY.ACBus, sys))
         PSI.init_optimization_container!(sub_problem, T, sys)
     end
 
