@@ -47,7 +47,10 @@ function _join_axes!(axes_data::SortedDict{Int, Set}, ix::Int, axes_value::Vecto
     return
 end
 
-function _get_axes!(common_axes::Dict{Symbol, Dict{PSI.OptimizationContainerKey, SortedDict{Int, Set}}}, container::PSI.OptimizationContainer)
+function _get_axes!(
+    common_axes::Dict{Symbol, Dict{PSI.OptimizationContainerKey, SortedDict{Int, Set}}},
+    container::PSI.OptimizationContainer,
+)
     for field in CONTAINER_FIELDS
         field_data = getfield(container, field)
         for (key, value_container) in field_data
@@ -63,7 +66,10 @@ function _get_axes!(common_axes::Dict{Symbol, Dict{PSI.OptimizationContainerKey,
     return
 end
 
-function _make_joint_axes!(dim1::Set{T}, dim2::Set{UnitRange{Int}}) where T <: Union{Int, String}
+function _make_joint_axes!(
+    dim1::Set{T},
+    dim2::Set{UnitRange{Int}},
+) where {T <: Union{Int, String}}
     return (collect(dim1), first(dim2))
 end
 
@@ -71,10 +77,11 @@ function _make_joint_axes!(dim1::Set{UnitRange{Int}})
     return (first(dim1),)
 end
 
-
 function _map_containers(model::PSI.DecisionModel{MultiRegionProblem})
-    common_axes =
-        Dict{Symbol, Dict{PSI.OptimizationContainerKey, SortedDict{Int, Set}}}(key => Dict{PSI.OptimizationContainerKey, SortedDict{Int, Set}}() for key in CONTAINER_FIELDS)
+    common_axes = Dict{Symbol, Dict{PSI.OptimizationContainerKey, SortedDict{Int, Set}}}(
+        key => Dict{PSI.OptimizationContainerKey, SortedDict{Int, Set}}() for
+        key in CONTAINER_FIELDS
+    )
     container = PSI.get_optimization_container(model)
     for (_, subproblem) in container.subproblems
         _get_axes!(common_axes, subproblem)
@@ -151,5 +158,4 @@ function PSI.solve_impl!(model::PSI.DecisionModel{MultiRegionProblem})
     return
 end
 
-function PSI._check_numerical_bounds(model::PSI.DecisionModel{MultiRegionProblem})
-end
+function PSI._check_numerical_bounds(model::PSI.DecisionModel{MultiRegionProblem}) end
