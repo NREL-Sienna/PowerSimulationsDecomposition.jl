@@ -88,7 +88,8 @@ PSI.get_initial_conditions_data(container::MultiOptimizationContainer) =
     container.initial_conditions_data
 PSI.get_initial_time(container::MultiOptimizationContainer) =
     PSI.get_initial_time(container.settings)
-PSI.get_jump_model(container::MultiOptimizationContainer) = PSI.get_jump_model(container.main_problem)
+PSI.get_jump_model(container::MultiOptimizationContainer) =
+    PSI.get_jump_model(container.main_problem)
 PSI.get_metadata(container::MultiOptimizationContainer) = container.metadata
 PSI.get_optimizer_stats(container::MultiOptimizationContainer) = container.optimizer_stats
 PSI.get_parameters(container::MultiOptimizationContainer) = container.parameters
@@ -115,10 +116,11 @@ function get_subproblem(container::MultiOptimizationContainer, id::String)
 end
 
 function check_optimization_container(container::MultiOptimizationContainer)
-    # Solve main problem
     for (index, sub_problem) in container.subproblems
         PSI.check_optimization_container(sub_problem)
     end
+    PSI.check_optimization_container(container.main_problem)
+    return
 end
 
 function _finalize_jump_model!(

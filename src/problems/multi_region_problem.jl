@@ -32,12 +32,51 @@ function PSI.DecisionModel{MultiRegionProblem}(
     )
 end
 
+function _get_axes!(common_axes::Dict, container::PSI.OptimizationContainer)
+    for field in CONTAINER_FIELDS
+        field_data = getfield(container, field)
+        for (key, value_container) in field_data
+            if isa(value_container, JuMP.Containers.SparseAxisArray)
+                continue
+            end
+            axes_data = get!(common_axes[field], key, SortedDict{Int, Set}())
+            for (ix, vals) in enumerate(axes(value_container))
+                union!(get!(axes_data, ix, Set(vals)))
+            end
+        end
+    end
+    return
+end
+
+function _map_containers(model::PSI.DecisionModel{MultiRegionProblem})
+    common_axes =
+        Dict(key => Dict{PSI.OptimizationContainerKey, Any}() for key in CONTAINER_FIELDS)
+    container = PSI.get_optimization_container(model)
+    for subproblem in values(container.subproblems)
+        _get_axes!(common_axes, subproblem)
+    end
+
+    for (field, vals) in common_axes
+        field_data = getfield(container, field)
+        for (key, axes_data) in vals
+            ax = [sort!(collect(v)) for v in values(axes_data)]
+            field_data[key] =
+                PSI.remove_undef!(JuMP.Containers.DenseAxisArray{Float64}(undef, ax...))
+        end
+    end
+
+    #TODO: Parameters Requires a different approach
+
+    return
+end
+
 function PSI.build_impl!(model::PSI.DecisionModel{MultiRegionProblem})
     build_pre_step!(model)
     @info "Instantiating Network Model"
     instantiate_network_model(model)
     handle_initial_conditions!(model)
     PSI.build_model!(model)
+    _map_containers(model)
     # Might need custom implementation for this container type
     # serialize_metadata!(get_optimization_container(model), get_output_dir(model))
     PSI.log_values(PSI.get_settings(model))
@@ -89,38 +128,5 @@ function PSI.solve_impl!(model::PSI.DecisionModel{MultiRegionProblem})
     return
 end
 
-function PSI.write_model_dual_results!(
-    store,
-    model::PSI.DecisionModel{MultiRegionProblem},
-    index::PSI.DecisionModelIndexType,
-    update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol, Any}, Nothing},
-) end
-function PSI.write_model_parameter_results!(
-    store,
-    model::PSI.DecisionModel{MultiRegionProblem},
-    index::PSI.DecisionModelIndexType,
-    update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol, Any}, Nothing},
-) end
-function PSI.write_model_variable_results!(
-    store,
-    model::PSI.DecisionModel{MultiRegionProblem},
-    index::PSI.DecisionModelIndexType,
-    update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol, Any}, Nothing},
-) end
-function PSI.write_model_aux_variable_results!(
-    store,
-    model::PSI.DecisionModel{MultiRegionProblem},
-    index::PSI.DecisionModelIndexType,
-    update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol, Any}, Nothing},
-) end
-function PSI.write_model_expression_results!(
-    store,
-    model::PSI.DecisionModel{MultiRegionProblem},
-    index::PSI.DecisionModelIndexType,
-    update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol, Any}, Nothing},
-) end
+function PSI._check_numerical_bounds(model::PSI.DecisionModel{MultiRegionProblem})
+end

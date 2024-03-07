@@ -10,6 +10,7 @@ import JuMP
 import Dates
 import MPI
 import MathOptInterface
+import DataStructures: SortedDict
 
 const PSI = PowerSimulations
 const PSY = PowerSystems
@@ -23,6 +24,7 @@ using DocStringExtensions
                                  $(DOCSTRING)
                                  """
 
+include("definitions.jl")
 include("core.jl")
 include("multiproblem_template.jl")
 include("multi_optimization_container.jl")
