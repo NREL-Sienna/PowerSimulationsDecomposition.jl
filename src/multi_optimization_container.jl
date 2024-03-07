@@ -1,6 +1,6 @@
 mutable struct MultiOptimizationContainer{T <: DecompositionAlgorithm} <:
                PSI.AbstractModelContainer
-    main_JuMPmodel::JuMP.Model
+    main_problem::PSI.OptimizationContainer
     subproblems::Dict{String, PSI.OptimizationContainer}
     time_steps::UnitRange{Int}
     resolution::Dates.TimePeriod
@@ -45,7 +45,7 @@ function MultiOptimizationContainer(
     end
 
     return MultiOptimizationContainer{T}(
-        JuMP.Model(),
+        PSI.OptimizationContainer(sys, settings, nothing, U),
         subproblems,
         1:1,
         IS.time_period_conversion(resolution),
@@ -88,7 +88,7 @@ PSI.get_initial_conditions_data(container::MultiOptimizationContainer) =
     container.initial_conditions_data
 PSI.get_initial_time(container::MultiOptimizationContainer) =
     PSI.get_initial_time(container.settings)
-PSI.get_jump_model(container::MultiOptimizationContainer) = container.main_JuMPmodel
+PSI.get_jump_model(container::MultiOptimizationContainer) = PSI.get_jump_model(container.main_problem)
 PSI.get_metadata(container::MultiOptimizationContainer) = container.metadata
 PSI.get_optimizer_stats(container::MultiOptimizationContainer) = container.optimizer_stats
 PSI.get_parameters(container::MultiOptimizationContainer) = container.parameters
@@ -126,35 +126,7 @@ function _finalize_jump_model!(
     settings::PSI.Settings,
 )
     @debug "Instantiating the JuMP model" _group = PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
-    #=
-    if PSI.built_for_recurrent_solves(container) && PSI.get_optimizer(settings) === nothing
-        throw(
-            IS.ConflictingInputsError(
-                "Optimizer can not be nothing when building for recurrent solves",
-            ),
-        )
-    end
-    =#
-
-    if PSI.get_direct_mode_optimizer(settings)
-        optimizer = () -> MOI.instantiate(PSI.get_optimizer(settings))
-        container.main_JuMPmodel = JuMP.direct_model(optimizer())
-    elseif PSI.get_optimizer(settings) === nothing
-        @debug "The optimization model has no optimizer attached" _group =
-            LOG_GROUP_OPTIMIZATION_CONTAINER
-    else
-        JuMP.set_optimizer(PSI.get_jump_model(container), PSI.get_optimizer(settings))
-    end
-
-    JuMPmodel = PSI.get_jump_model(container)
-
-    if PSI.get_optimizer_solve_log_print(settings)
-        JuMP.unset_silent(JuMPmodel)
-        @debug "optimizer unset to silent" _group = PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
-    else
-        JuMP.set_silent(JuMPmodel)
-        @debug "optimizer set to silent" _group = PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
-    end
+    PSI._finalize_jump_model!(container.main_problem, settings)
     return
 end
 
@@ -184,7 +156,9 @@ function init_optimization_container!(
     stats = PSI.get_optimizer_stats(container)
     stats.detailed_stats = PSI.get_detailed_optimizer_stats(settings)
 
-    _finalize_jump_model!(container, settings)
+    # need a special method for the main problem to initialize the optimization container
+    # without actually caring about the subnetworks
+    # PSI.init_optimization_container!(sub_problem, network_model, sys)
 
     for (index, sub_problem) in container.subproblems
         @debug "Initializing Container Subproblem $index" _group =
@@ -192,7 +166,7 @@ function init_optimization_container!(
         sub_problem.settings = deepcopy(settings)
         PSI.init_optimization_container!(sub_problem, network_model, sys)
     end
-
+    _finalize_jump_model!(container, settings)
     return
 end
 
