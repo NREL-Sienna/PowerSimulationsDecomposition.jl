@@ -21,6 +21,11 @@ function build_main_problem!(
     sys::PSY.System,
 ) end
 
+
+# The drawback of this approach is that it will loop over the results twice
+# once to write into the main container and a second time when writing into the
+# store. The upside of this approach is that doesn't require overloading write_model_XXX_results!
+# methods from PowerSimulations.
 function write_results_to_main_container(container::MultiOptimizationContainer)
     # TODO: This process needs to work in parallel almost right away
     for (index, sub_problem) in container.subproblems
