@@ -21,7 +21,20 @@ function build_main_problem!(
     sys::PSY.System,
 ) end
 
-function write_results_to_main_container(container::MultiOptimizationContainer) end
+function write_results_to_main_container(container::MultiOptimizationContainer)
+    # TODO: This process needs to work in parallel almost right away
+    for (index, sub_problem) in container.subproblems
+        for field in CONTAINER_FIELDS
+            sub_problem_data_field = getproperty(sub_problem, field)
+            main_container_data_field = getproperty(container, field)
+            for (key, value_container) in sub_problem_data_field
+                # write PSI._jump_value() from the value container to the main_container_data_field
+            end
+        end
+    end
+    # Parameters need a separate approach due to the way the containers work
+    return
+end
 
 function solve_impl!(
     container::MultiOptimizationContainer{SequentialAlgorithm},
@@ -33,6 +46,6 @@ function solve_impl!(
         @info "Solving problem $index"
         status = PSI.solve_impl!(sub_problem, sys)
     end
-    #write_results_to_main_container()
+    write_results_to_main_container(container)
     return status
 end
