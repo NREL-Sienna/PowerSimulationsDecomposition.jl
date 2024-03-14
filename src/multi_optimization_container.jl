@@ -1,5 +1,5 @@
-mutable struct MultiOptimizationContainer{T <: DecompositionAlgorithm} <:
-               PSI.AbstractModelContainer
+Base.@kwdef mutable struct MultiOptimizationContainer{T <: DecompositionAlgorithm} <:
+                           PSI.AbstractModelContainer
     main_problem::PSI.OptimizationContainer
     subproblems::Dict{String, PSI.OptimizationContainer}
     time_steps::UnitRange{Int}
@@ -16,10 +16,8 @@ mutable struct MultiOptimizationContainer{T <: DecompositionAlgorithm} <:
     primal_values_cache::PSI.PrimalValuesCache
     initial_conditions::Dict{PSI.ICKey, Vector{<:PSI.InitialCondition}}
     initial_conditions_data::PSI.InitialConditionsData
-    infeasibility_conflict::Dict{Symbol, Array}
-    pm::Union{Nothing, PM.AbstractPowerModel}
     base_power::Float64
-    optimizer_stats::PSI.OptimizerStats
+    optimizer_stats::PSI.OptimizerStats  # TODO: needs custom struct
     built_for_recurrent_solves::Bool
     metadata::PSI.OptimizationContainerMetadata
     default_time_series_type::Type{<:PSY.TimeSeriesData}  # Maybe isn't needed here
@@ -31,7 +29,7 @@ function MultiOptimizationContainer(
     sys::PSY.System,
     settings::PSI.Settings,
     ::Type{U},
-    sub_problem_keys::Vector{String},
+    subproblem_keys::Vector{String},
 ) where {T <: DecompositionAlgorithm, U <: PSY.TimeSeriesData}
     resolution = PSY.get_time_series_resolution(sys)
     if isabstracttype(U)
@@ -39,36 +37,33 @@ function MultiOptimizationContainer(
     end
 
     # define dictionary containing the optimization container for the subregion
-    subproblems = Dict{String, PSI.OptimizationContainer}()
-    for k in sub_problem_keys
-        subproblems[k] = PSI.OptimizationContainer(sys, settings, nothing, U)
-    end
+    subproblems = Dict(
+        k => PSI.OptimizationContainer(sys, settings, nothing, U) for k in subproblem_keys
+    )
 
     return MultiOptimizationContainer{T}(
-        PSI.OptimizationContainer(sys, settings, nothing, U),
-        subproblems,
-        1:1,
-        IS.time_period_conversion(resolution),
-        settings,
-        PSI.copy_for_serialization(settings),
-        Dict{PSI.VariableKey, AbstractArray}(),
-        Dict{PSI.AuxVarKey, AbstractArray}(),
-        Dict{PSI.ConstraintKey, AbstractArray}(),
-        Dict{PSI.ConstraintKey, AbstractArray}(),
-        PSI.ObjectiveFunction(),
-        Dict{PSI.ExpressionKey, AbstractArray}(),
-        Dict{PSI.ParameterKey, PSI.ParameterContainer}(),
-        PSI.PrimalValuesCache(),
-        Dict{PSI.ICKey, Vector{PSI.InitialCondition}}(),
-        PSI.InitialConditionsData(),
-        Dict{Symbol, Array}(),
-        nothing,
-        PSY.get_base_power(sys),
-        PSI.OptimizerStats(),
-        false,
-        PSI.OptimizationContainerMetadata(),
-        U,
-        nothing,
+        main_problem=PSI.OptimizationContainer(sys, settings, nothing, U),
+        subproblems=subproblems,
+        time_steps=1:1,
+        resolution=IS.time_period_conversion(resolution),
+        settings=settings,
+        settings_copy=PSI.copy_for_serialization(settings),
+        variables=Dict{PSI.VariableKey, AbstractArray}(),
+        aux_variables=Dict{PSI.AuxVarKey, AbstractArray}(),
+        duals=Dict{PSI.ConstraintKey, AbstractArray}(),
+        constraints=Dict{PSI.ConstraintKey, AbstractArray}(),
+        objective_function=PSI.ObjectiveFunction(),
+        expressions=Dict{PSI.ExpressionKey, AbstractArray}(),
+        parameters=Dict{PSI.ParameterKey, PSI.ParameterContainer}(),
+        primal_values_cache=PSI.PrimalValuesCache(),
+        initial_conditions=Dict{PSI.ICKey, Vector{PSI.InitialCondition}}(),
+        initial_conditions_data=PSI.InitialConditionsData(),
+        base_power=PSY.get_base_power(sys),
+        optimizer_stats=PSI.OptimizerStats(),
+        built_for_recurrent_solves=false,
+        metadata=PSI.OptimizationContainerMetadata(),
+        default_time_series_type=U,
+        mpi_info=nothing,
     )
 end
 
@@ -80,8 +75,6 @@ PSI.get_default_time_series_type(container::MultiOptimizationContainer) =
     container.default_time_series_type
 PSI.get_duals(container::MultiOptimizationContainer) = container.duals
 PSI.get_expressions(container::MultiOptimizationContainer) = container.expressions
-PSI.get_infeasibility_conflict(container::MultiOptimizationContainer) =
-    container.infeasibility_conflict
 PSI.get_initial_conditions(container::MultiOptimizationContainer) =
     container.initial_conditions
 PSI.get_initial_conditions_data(container::MultiOptimizationContainer) =
@@ -116,8 +109,8 @@ function get_subproblem(container::MultiOptimizationContainer, id::String)
 end
 
 function check_optimization_container(container::MultiOptimizationContainer)
-    for (index, sub_problem) in container.subproblems
-        PSI.check_optimization_container(sub_problem)
+    for subproblem in values(container.subproblems)
+        PSI.check_optimization_container(subproblem)
     end
     PSI.check_optimization_container(container.main_problem)
     return
@@ -147,9 +140,12 @@ function init_optimization_container!(
         elseif PSI.get_default_time_series_type(container) <: PSY.SingleTimeSeries
             ini_time, _ = PSY.check_time_series_consistency(sys, PSY.SingleTimeSeries)
             PSI.set_initial_time!(settings, ini_time)
+        else
+            error("Bug: unhandled $(PSI.get_default_time_series_type(container))")
         end
     end
 
+    # TODO DT: what if the time series type is SingleTimeSeries?
     if PSI.get_horizon(settings) == PSI.UNSET_HORIZON
         PSI.set_horizon!(settings, PSY.get_forecast_horizon(sys))
     end
@@ -160,13 +156,13 @@ function init_optimization_container!(
 
     # need a special method for the main problem to initialize the optimization container
     # without actually caring about the subnetworks
-    # PSI.init_optimization_container!(sub_problem, network_model, sys)
+    # PSI.init_optimization_container!(subproblem, network_model, sys)
 
-    for (index, sub_problem) in container.subproblems
+    for (index, subproblem) in container.subproblems
         @debug "Initializing Container Subproblem $index" _group =
             PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
-        sub_problem.settings = deepcopy(settings)
-        PSI.init_optimization_container!(sub_problem, network_model, sys)
+        subproblem.settings = deepcopy(settings)
+        PSI.init_optimization_container!(subproblem, network_model, sys)
     end
     _finalize_jump_model!(container, settings)
     return

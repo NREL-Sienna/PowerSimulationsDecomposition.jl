@@ -83,8 +83,8 @@ function _map_containers(model::PSI.DecisionModel{MultiRegionProblem})
         key in CONTAINER_FIELDS
     )
     container = PSI.get_optimization_container(model)
-    for (_, subproblem) in container.subproblems
-        _get_axes!(common_axes, subproblem)
+    for subproblem_container in values(container.subproblems)
+        _get_axes!(common_axes, subproblem_container)
     end
 
     for (field, vals) in common_axes
