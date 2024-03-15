@@ -1,48 +1,25 @@
 struct MultiRegionProblem <: PSI.DecisionProblem end
 
-function get_n_subregions(sys::PSY.System)
-    # TODO: this function can be improved (less for loops)
-    subregions_ = String[]
-    for d in PSY.get_components(PSY.Component, sys)
-        if typeof(d) ∉ [PSY.Area, PSY.Arc, PSY.LoadZone]
-            if isempty(PSY.get_ext(d))
-                error("Field `ext` must be non empty if spatial decomposition is used.")
-            else
-                for sb in PSY.get_ext(d)["subregion"]
-                    if sb ∉ subregions_
-                        push!(subregions_, sb)
-                    end
-                end
-            end
-        end
-    end
-    return subregions_
-end
-
 function PSI.DecisionModel{MultiRegionProblem}(
-    template::PSI.ProblemTemplate,
+    template::MultiProblemTemplate,
     sys::PSY.System,
-    settings::PSI.Settings,
-    ::Union{Nothing,JuMP.Model}=nothing;
-    name=nothing,
+    ::Union{Nothing, JuMP.Model}=nothing;
+    kwargs...,
 )
-    if name === nothing
-        name = nameof(MultiRegionProblem)
-    elseif name isa String
-        name = Symbol(name)
-    end
-
-    # get number of system subregions
-    # NOTE: `ext` field for each component must be filled with a "subregion" key in the dictionary
-    region_keys = get_n_subregions(sys)
-
-    # define the optimization container with master and subproblems
+    name = Symbol(get(kwargs, :name, nameof(MultiRegionProblem)))
+    settings = PSI.Settings(sys; [k for k in kwargs if first(k) ∉ [:name]]...)
     internal = PSI.ModelInternal(
-        MultiOptimizationContainer(SequentialAlgorithm, sys, settings, PSY.Deterministic, region_keys),
+        MultiOptimizationContainer(
+            SequentialAlgorithm,
+            sys,
+            settings,
+            PSY.Deterministic,
+            get_sub_problem_keys(template),
+        ),
     )
     template_ = deepcopy(template)
 
-    PSI.finalize_template!(template_, sys)
+    finalize_template!(template_, sys)
 
     # return multi-region decision model container
     return PSI.DecisionModel{MultiRegionProblem}(
@@ -51,8 +28,76 @@ function PSI.DecisionModel{MultiRegionProblem}(
         sys,
         internal,
         PSI.DecisionModelStore(),
-        Dict{String,Any}(),
+        Dict{String, Any}(),
     )
+end
+
+function _join_axes!(axes_data::SortedDict{Int, Set}, ix::Int, axes_value::UnitRange{Int})
+    _axes_data = get!(axes_data, ix, Set{UnitRange{Int}}())
+    if _axes_data == axes_value
+        return
+    end
+    union!(_axes_data, [axes_value])
+    return
+end
+
+function _join_axes!(axes_data::SortedDict{Int, Set}, ix::Int, axes_value::Vector)
+    _axes_data = get!(axes_data, ix, Set{eltype(axes_value)}())
+    union!(_axes_data, axes_value)
+    return
+end
+
+function _get_axes!(
+    common_axes::Dict{Symbol, Dict{PSI.OptimizationContainerKey, SortedDict{Int, Set}}},
+    container::PSI.OptimizationContainer,
+)
+    for field in CONTAINER_FIELDS
+        field_data = getfield(container, field)
+        for (key, value_container) in field_data
+            if isa(value_container, JuMP.Containers.SparseAxisArray)
+                continue
+            end
+            axes_data = get!(common_axes[field], key, SortedDict{Int, Set}())
+            for (ix, vals) in enumerate(axes(value_container))
+                _join_axes!(axes_data, ix, vals)
+            end
+        end
+    end
+    return
+end
+
+function _make_joint_axes!(
+    dim1::Set{T},
+    dim2::Set{UnitRange{Int}},
+) where {T <: Union{Int, String}}
+    return (collect(dim1), first(dim2))
+end
+
+function _make_joint_axes!(dim1::Set{UnitRange{Int}})
+    return (first(dim1),)
+end
+
+function _map_containers(model::PSI.DecisionModel{MultiRegionProblem})
+    common_axes = Dict{Symbol, Dict{PSI.OptimizationContainerKey, SortedDict{Int, Set}}}(
+        key => Dict{PSI.OptimizationContainerKey, SortedDict{Int, Set}}() for
+        key in CONTAINER_FIELDS
+    )
+    container = PSI.get_optimization_container(model)
+    for subproblem_container in values(container.subproblems)
+        _get_axes!(common_axes, subproblem_container)
+    end
+
+    for (field, vals) in common_axes
+        field_data = getproperty(container, field)
+        for (key, axes_data) in vals
+            ax = _make_joint_axes!(collect(values(axes_data))...)
+            field_data[key] =
+                PSI.remove_undef!(JuMP.Containers.DenseAxisArray{Float64}(undef, ax...))
+        end
+    end
+    #TODO: Parameters Requires a different approach
+
+    return
 end
 
 function PSI.build_impl!(model::PSI.DecisionModel{MultiRegionProblem})
@@ -61,8 +106,9 @@ function PSI.build_impl!(model::PSI.DecisionModel{MultiRegionProblem})
     instantiate_network_model(model)
     handle_initial_conditions!(model)
     PSI.build_model!(model)
+    _map_containers(model)
     # Might need custom implementation for this container type
-    #serialize_metadata!(get_optimization_container(model), get_output_dir(model))
+    # serialize_metadata!(get_optimization_container(model), get_output_dir(model))
     PSI.log_values(PSI.get_settings(model))
     return
 end
@@ -71,7 +117,7 @@ function build_pre_step!(model::PSI.DecisionModel{MultiRegionProblem})
     @info "Initializing Optimization Container For a DecisionModel"
     init_optimization_container!(
         PSI.get_optimization_container(model),
-        PSI.get_network_formulation(PSI.get_template(model)),
+        PSI.get_network_model(PSI.get_template(model)),
         PSI.get_system(model),
     )
     @info "Initializing ModelStoreParams"
@@ -80,16 +126,29 @@ function build_pre_step!(model::PSI.DecisionModel{MultiRegionProblem})
     return
 end
 
-function handle_initial_conditions!(model::PSI.DecisionModel{MultiRegionProblem})
-end
+function handle_initial_conditions!(model::PSI.DecisionModel{MultiRegionProblem}) end
 
 function instantiate_network_model(model::PSI.DecisionModel{MultiRegionProblem})
-    PSI.instantiate_network_model(model)
+    template = PSI.get_template(model)
+    for (id, sub_template) in get_sub_templates(template)
+        network_model = PSI.get_network_model(sub_template)
+        PSI.set_subsystem!(network_model, id)
+        PSI.instantiate_network_model(network_model, PSI.get_system(model))
+    end
     return
 end
 
+function PSI.serialize_problem(
+    model::PSI.DecisionModel{MultiRegionProblem};
+    optimizer::Nothing,
+) end
+
 function PSI.build_model!(model::PSI.DecisionModel{MultiRegionProblem})
-    build_impl!(PSI.get_optimization_container(model), PSI.get_template(model), PSI.get_system(model))
+    build_impl!(
+        PSI.get_optimization_container(model),
+        PSI.get_template(model),
+        PSI.get_system(model),
+    )
     return
 end
 
@@ -99,33 +158,4 @@ function PSI.solve_impl!(model::PSI.DecisionModel{MultiRegionProblem})
     return
 end
 
-function PSI.write_model_dual_results!(store,
-    model::PSI.DecisionModel{MultiRegionProblem},
-    index::PSI.DecisionModelIndexType,
-    update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol,Any},Nothing},)
-end
-function PSI.write_model_parameter_results!(store,
-    model::PSI.DecisionModel{MultiRegionProblem},
-    index::PSI.DecisionModelIndexType,
-    update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol,Any},Nothing},)
-end
-function PSI.write_model_variable_results!(store,
-    model::PSI.DecisionModel{MultiRegionProblem},
-    index::PSI.DecisionModelIndexType,
-    update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol,Any},Nothing},)
-end
-function PSI.write_model_aux_variable_results!(store,
-    model::PSI.DecisionModel{MultiRegionProblem},
-    index::PSI.DecisionModelIndexType,
-    update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol,Any},Nothing},)
-end
-function PSI.write_model_expression_results!(store,
-    model::PSI.DecisionModel{MultiRegionProblem},
-    index::PSI.DecisionModelIndexType,
-    update_timestamp::Dates.DateTime,
-    export_params::Union{Dict{Symbol,Any},Nothing},)
-end
+function PSI._check_numerical_bounds(model::PSI.DecisionModel{MultiRegionProblem}) end
