@@ -66,9 +66,37 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
                 end
             end
         end
+        _write_parameter_results_to_main_container(container, subproblem)
     end
     # Parameters need a separate approach due to the way the containers work
     return
+end
+
+function _write_parameter_results_to_main_container(
+    container::MultiOptimizationContainer,
+    subproblem,
+)
+    for (key, parameter_container) in subproblem.parameters
+        num_dims = ndims(parameter_container.parameter_array)
+        num_dims > 2 && error("ndims = $(num_dims) is not supported yet")
+        src_param_data = PSI.jump_value.(parameter_container.parameter_array)
+        src_mult_data = PSI.jump_value.(parameter_container.multiplier_array)
+        dst_param_data = container.parameters[key].parameter_array
+        dst_mult_data = container.parameters[key].multiplier_array
+        if num_dims == 1
+            dst_param_data[1:length(axes(src_param_data)[1])] = src_param_data
+            dst_mult_data[1:length(axes(src_mult_data)[1])] = src_mult_data
+        elseif num_dims == 2
+            param_columns = axes(src_param_data)[1]
+            mult_columns = axes(src_mult_data)[1]
+            len = length(axes(src_param_data)[2])
+            @assert_op len == length(axes(src_mult_data)[2])
+            dst_param_data[param_columns, 1:len] = PSI.jump_value.(src_param_data[:, :])
+            dst_mult_data[mult_columns, 1:len] = PSI.jump_value.(src_mult_data[:, :])
+        else
+            error("Bug")
+        end
+    end
 end
 
 function solve_impl!(

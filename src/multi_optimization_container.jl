@@ -41,29 +41,29 @@ function MultiOptimizationContainer(
         k => PSI.OptimizationContainer(sys, settings, nothing, U) for k in subproblem_keys
     )
 
-    return MultiOptimizationContainer{T}(
-        main_problem=PSI.OptimizationContainer(sys, settings, nothing, U),
-        subproblems=subproblems,
-        time_steps=1:1,
-        resolution=IS.time_period_conversion(resolution),
-        settings=settings,
-        settings_copy=PSI.copy_for_serialization(settings),
-        variables=Dict{PSI.VariableKey, AbstractArray}(),
-        aux_variables=Dict{PSI.AuxVarKey, AbstractArray}(),
-        duals=Dict{PSI.ConstraintKey, AbstractArray}(),
-        constraints=Dict{PSI.ConstraintKey, AbstractArray}(),
-        objective_function=PSI.ObjectiveFunction(),
-        expressions=Dict{PSI.ExpressionKey, AbstractArray}(),
-        parameters=Dict{PSI.ParameterKey, PSI.ParameterContainer}(),
-        primal_values_cache=PSI.PrimalValuesCache(),
-        initial_conditions=Dict{PSI.ICKey, Vector{PSI.InitialCondition}}(),
-        initial_conditions_data=PSI.InitialConditionsData(),
-        base_power=PSY.get_base_power(sys),
-        optimizer_stats=PSI.OptimizerStats(),
-        built_for_recurrent_solves=false,
-        metadata=PSI.OptimizationContainerMetadata(),
-        default_time_series_type=U,
-        mpi_info=nothing,
+    return MultiOptimizationContainer{T}(;
+        main_problem = PSI.OptimizationContainer(sys, settings, nothing, U),
+        subproblems = subproblems,
+        time_steps = 1:1,
+        resolution = IS.time_period_conversion(resolution),
+        settings = settings,
+        settings_copy = PSI.copy_for_serialization(settings),
+        variables = Dict{PSI.VariableKey, AbstractArray}(),
+        aux_variables = Dict{PSI.AuxVarKey, AbstractArray}(),
+        duals = Dict{PSI.ConstraintKey, AbstractArray}(),
+        constraints = Dict{PSI.ConstraintKey, AbstractArray}(),
+        objective_function = PSI.ObjectiveFunction(),
+        expressions = Dict{PSI.ExpressionKey, AbstractArray}(),
+        parameters = Dict{PSI.ParameterKey, PSI.ParameterContainer}(),
+        primal_values_cache = PSI.PrimalValuesCache(),
+        initial_conditions = Dict{PSI.ICKey, Vector{PSI.InitialCondition}}(),
+        initial_conditions_data = PSI.InitialConditionsData(),
+        base_power = PSY.get_base_power(sys),
+        optimizer_stats = PSI.OptimizerStats(),
+        built_for_recurrent_solves = false,
+        metadata = PSI.OptimizationContainerMetadata(),
+        default_time_series_type = U,
+        mpi_info = nothing,
     )
 end
 
@@ -145,7 +145,7 @@ function init_optimization_container!(
         end
     end
 
-    # TODO DT: what if the time series type is SingleTimeSeries?
+    # TODO: what if the time series type is SingleTimeSeries?
     if PSI.get_horizon(settings) == PSI.UNSET_HORIZON
         PSI.set_horizon!(settings, PSY.get_forecast_horizon(sys))
     end
