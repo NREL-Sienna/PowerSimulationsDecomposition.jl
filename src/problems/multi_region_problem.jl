@@ -135,7 +135,7 @@ function _make_parameter_attributes(subproblem_parameters)
 end
 
 function _merge_attributes!(attributes::T, other::T) where {T <: PSI.ParameterAttributes}
-    if attributes.attributes.name != other.name
+    if attributes.name != other.name
         error("Mismatch in attributes name: $(attributes.name) $(other.name)")
     end
     for field in fieldnames(T)
