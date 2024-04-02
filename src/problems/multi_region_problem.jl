@@ -3,7 +3,7 @@ struct MultiRegionProblem <: PSI.DecisionProblem end
 function PSI.DecisionModel{MultiRegionProblem}(
     template::MultiProblemTemplate,
     sys::PSY.System,
-    ::Union{Nothing, JuMP.Model} = nothing;
+    ::Union{Nothing, JuMP.Model}=nothing;
     kwargs...,
 )
     name = Symbol(get(kwargs, :name, nameof(MultiRegionProblem)))
@@ -261,3 +261,66 @@ function PSI.solve_impl!(model::PSI.DecisionModel{MultiRegionProblem})
 end
 
 function PSI._check_numerical_bounds(model::PSI.DecisionModel{MultiRegionProblem}) end
+
+### Simulation Related methods ###
+# These code blocks are duplicative from PSI, refactoring might be required on the PSI side to
+# avoid duplication.
+
+function PSI._add_feedforward_to_model(
+    sim_model::PSI.DecisionModel{MultiRegionProblem},
+    ff::T,
+    ::Type{U},
+) where {T <: PSI.AbstractAffectFeedforward, U <: PSY.Device}
+    template = PSI.get_template(sim_model)
+    for (id, sub_template) in get_sub_templates(template)
+        device_model = PSI.get_model(sub_template, PSI.get_component_type(ff))
+        if device_model === nothing
+            model_name = PSI.get_name(sim_model)
+            throw(
+                IS.ConflictingInputsError(
+                    "Device model $(PSI.get_component_type(ff)) not found in model $model_name",
+                ),
+            )
+        end
+        @info "attaching $T to $(PSI.get_component_type(ff)) to Template $id"
+        PSI.attach_feedforward!(device_model, ff)
+    end
+    return
+end
+
+function PSI._add_feedforward_to_model(
+    sim_model::PSI.DecisionModel{MultiRegionProblem},
+    ff::T,
+    ::Type{U},
+) where {T <: PSI.AbstractAffectFeedforward, U <: PSY.Service}
+    template = PSI.get_template(sim_model)
+    name_provided = PSI.get_feedforward_meta(ff) != PSI.NO_SERVICE_NAME_PROVIDED
+    for (id, sub_template) in get_sub_templates(template)
+        if name_provided
+            service_model = PSI.get_model(
+                sub_template,
+                PSI.get_component_type(ff),
+                PSI.get_feedforward_meta(ff),
+            )
+            if service_model === nothing
+                throw(
+                    IS.ConflictingInputsError(
+                        "Service model $(get_component_type(ff)) not found in model $(get_name(sim_model))",
+                    ),
+                )
+            end
+            @info "attaching $T to $(PSI.get_component_type(ff)) $(PSI.get_feedforward_meta(ff)) to Template $id"
+            PSI.attach_feedforward!(service_model, ff)
+        else
+            service_found = false
+            for (key, model) in PSI.get_service_models(sub_template)
+                if key[2] == Symbol(PSI.get_component_type(ff))
+                    service_found = true
+                    @info "attaching $T to $(PSI.get_component_type(ff))"
+                    PSI.attach_feedforward!(model, ff)
+                end
+            end
+        end
+    end
+    return
+end
