@@ -126,11 +126,7 @@ function _make_parameter_attributes(subproblem_parameters)
             if !haskey(data, key)
                 data[key] = deepcopy(val.attributes)
             else
-                existing = data[key]
-                if val.attributes.name != existing.name
-                    error("Mismatch in attributes name: $key $val $(existing.name)")
-                end
-                _merge_attributes!(existing, val.attributes)
+                _merge_attributes!(data[key], val.attributes)
             end
         end
     end
@@ -138,7 +134,10 @@ function _make_parameter_attributes(subproblem_parameters)
     return data
 end
 
-function _merge_attributes(attributes::T, other::T) where {T <: PSI.ParameterAttributes}
+function _merge_attributes!(attributes::T, other::T) where {T <: PSI.ParameterAttributes}
+    if attributes.attributes.name != other.name
+        error("Mismatch in attributes name: $(attributes.name) $(other.name)")
+    end
     for field in fieldnames(T)
         val1 = getproperty(attributes, field)
         val2 = getproperty(other, field)
