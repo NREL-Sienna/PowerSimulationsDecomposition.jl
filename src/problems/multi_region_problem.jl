@@ -135,9 +135,6 @@ function _make_parameter_attributes(subproblem_parameters)
 end
 
 function _merge_attributes!(attributes::T, other::T) where {T <: PSI.ParameterAttributes}
-    if attributes.name != other.name
-        error("Mismatch in attributes name: $(attributes.name) $(other.name)")
-    end
     for field in fieldnames(T)
         val1 = getproperty(attributes, field)
         val2 = getproperty(other, field)
@@ -150,6 +147,9 @@ function _merge_attributes!(attributes::T, other::T) where {T <: PSI.ParameterAt
 end
 
 function _merge_attributes!(attributes::T, other::T) where {T <: PSI.TimeSeriesAttributes}
+    if attributes.name != other.name
+        error("Mismatch in attributes name: $(attributes.name) $(other.name)")
+    end
     intersection = intersect(
         keys(attributes.component_name_to_ts_uuid),
         keys(other.component_name_to_ts_uuid),
