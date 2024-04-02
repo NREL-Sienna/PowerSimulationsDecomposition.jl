@@ -123,10 +123,10 @@ function PSI.set_service_model!(
     PSI.set_service_model!(
         template.base_template,
         service_name,
-        ServiceModel(service_type, formulation; use_service_name=true),
+        ServiceModel(service_type, formulation; use_service_name = true),
     )
     for (id, sub_template) in get_sub_templates(template)
-        service_model = ServiceModel(service_type, formulation; use_service_name=true)
+        service_model = ServiceModel(service_type, formulation; use_service_name = true)
         PSI.set_subsystem!(service_model, id)
         PSI.set_service_model!(sub_template, service_name, service_model)
     end

@@ -3,7 +3,7 @@ struct MultiRegionProblem <: PSI.DecisionProblem end
 function PSI.DecisionModel{MultiRegionProblem}(
     template::MultiProblemTemplate,
     sys::PSY.System,
-    ::Union{Nothing, JuMP.Model}=nothing;
+    ::Union{Nothing, JuMP.Model} = nothing;
     kwargs...,
 )
     name = Symbol(get(kwargs, :name, nameof(MultiRegionProblem)))
@@ -32,7 +32,7 @@ function PSI.DecisionModel{MultiRegionProblem}(
     )
 end
 
-function _join_axes!(axes_data::SortedDict{Int, Set}, ix::Int, axes_value::UnitRange{Int})
+function _join_axes!(axes_data::OrderedDict{Int, Set}, ix::Int, axes_value::UnitRange{Int})
     _axes_data = get!(axes_data, ix, Set{UnitRange{Int}}())
     if _axes_data == axes_value
         return
@@ -41,14 +41,14 @@ function _join_axes!(axes_data::SortedDict{Int, Set}, ix::Int, axes_value::UnitR
     return
 end
 
-function _join_axes!(axes_data::SortedDict{Int, Set}, ix::Int, axes_value::Vector)
+function _join_axes!(axes_data::OrderedDict{Int, Set}, ix::Int, axes_value::Vector)
     _axes_data = get!(axes_data, ix, Set{eltype(axes_value)}())
     union!(_axes_data, axes_value)
     return
 end
 
 function _get_axes!(
-    common_axes::Dict{Symbol, Dict{PSI.OptimizationContainerKey, SortedDict{Int, Set}}},
+    common_axes::Dict{Symbol, Dict{PSI.OptimizationContainerKey, OrderedDict{Int, Set}}},
     container::PSI.OptimizationContainer,
 )
     for field in CONTAINER_FIELDS
@@ -57,7 +57,7 @@ function _get_axes!(
             if isa(value_container, JuMP.Containers.SparseAxisArray)
                 continue
             end
-            axes_data = get!(common_axes[field], key, SortedDict{Int, Set}())
+            axes_data = get!(common_axes[field], key, OrderedDict{Int, Set}())
             for (ix, vals) in enumerate(axes(value_container))
                 _join_axes!(axes_data, ix, vals)
             end
@@ -78,8 +78,8 @@ function _make_joint_axes!(dim1::Set{UnitRange{Int}})
 end
 
 function _map_containers(model::PSI.DecisionModel{MultiRegionProblem})
-    common_axes = Dict{Symbol, Dict{PSI.OptimizationContainerKey, SortedDict{Int, Set}}}(
-        key => Dict{PSI.OptimizationContainerKey, SortedDict{Int, Set}}() for
+    common_axes = Dict{Symbol, Dict{PSI.OptimizationContainerKey, OrderedDict{Int, Set}}}(
+        key => Dict{PSI.OptimizationContainerKey, OrderedDict{Int, Set}}() for
         key in CONTAINER_FIELDS
     )
     container = PSI.get_optimization_container(model)
@@ -91,13 +91,115 @@ function _map_containers(model::PSI.DecisionModel{MultiRegionProblem})
         field_data = getproperty(container, field)
         for (key, axes_data) in vals
             ax = _make_joint_axes!(collect(values(axes_data))...)
-            field_data[key] =
-                PSI.remove_undef!(JuMP.Containers.DenseAxisArray{Float64}(undef, ax...))
+            field_data[key] = JuMP.Containers.DenseAxisArray{Float64}(undef, ax...)
         end
     end
-    #TODO: Parameters Requires a different approach
 
+    _make_parameter_container!(model)
     return
+end
+
+function _make_parameter_container!(model)
+    container = PSI.get_optimization_container(model)
+    subproblem_parameters = [x.parameters for x in values(container.subproblems)]
+    parameter_arrays = _make_parameter_arrays(subproblem_parameters, :parameter_array)
+    multiplier_arrays = _make_parameter_arrays(subproblem_parameters, :multiplier_array)
+    attributes = _make_parameter_attributes(subproblem_parameters)
+
+    !issetequal(keys(parameter_arrays), keys(multiplier_arrays)) &&
+        error("Bug: key mismatch")
+    !issetequal(keys(parameter_arrays), keys(attributes)) && error("Bug: key mismatch")
+
+    for key in keys(parameter_arrays)
+        container.parameters[key] = PSI.ParameterContainer(
+            attributes[key],
+            parameter_arrays[key],
+            multiplier_arrays[key],
+        )
+    end
+end
+
+function _make_parameter_attributes(subproblem_parameters)
+    data = Dict()
+    for parameters in subproblem_parameters
+        for (key, val) in parameters
+            if !haskey(data, key)
+                data[key] = deepcopy(val.attributes)
+            else
+                existing = data[key]
+                if val.attributes.name != existing.name
+                    error("Mismatch in attributes name: $key $val $(existing.name)")
+                end
+                _merge_attributes!(existing, val.attributes)
+            end
+        end
+    end
+
+    return data
+end
+
+function _merge_attributes(attributes::T, other::T) where {T <: PSI.ParameterAttributes}
+    for field in fieldnames(T)
+        val1 = getproperty(attributes, field)
+        val2 = getproperty(other, field)
+        if val1 != val2
+            error(
+                "Mismatch in attributes values. T = $T attributes = $attributes other = $other",
+            )
+        end
+    end
+end
+
+function _merge_attributes!(attributes::T, other::T) where {T <: PSI.TimeSeriesAttributes}
+    intersection = intersect(
+        keys(attributes.component_name_to_ts_uuid),
+        keys(other.component_name_to_ts_uuid),
+    )
+    if !isempty(intersection)
+        error("attributes component_name_to_ts_uuid have collsions: $intersection")
+    end
+
+    merge!(attributes.component_name_to_ts_uuid, other.component_name_to_ts_uuid)
+    return
+end
+
+function _make_parameter_arrays(subproblem_parameters, field_name)
+    data = Dict{PSI.ParameterKey, AbstractArray}()
+    for parameters in subproblem_parameters
+        for (key, val) in parameters
+            if val isa JuMP.Containers.SparseAxisArray
+                @warn "Skipping SparseAxisArray"  # TODO
+                continue
+            end
+            array = getproperty(val, field_name)
+            if !haskey(data, key)
+                data[key] = JuMP.Containers.DenseAxisArray{Float64}(undef, axes(array)...)
+            else
+                existing = data[key]
+                data[key] = _make_array_joined_by_axes(existing, array)
+            end
+        end
+    end
+
+    return data
+end
+
+function _make_array_joined_by_axes(
+    a1::JuMP.Containers.DenseAxisArray{Float64, 2},
+    a2::JuMP.Containers.DenseAxisArray{Float64, 2},
+)
+    ax1 = axes(a1)
+    ax2 = axes(a2)
+    if ax1[2] != ax2[2]
+        error("axis 2 must be the same")
+    end
+
+    if issetequal(ax1[1], ax2[1])
+        return JuMP.Containers.DenseAxisArray{Float64}(undef, ax1[1], ax1[2])
+    end
+
+    axis1 = union(ax1[1], ax2[1])
+    return JuMP.Containers.DenseAxisArray{Float64}(undef, axis1, ax1[2])
 end
 
 function PSI.build_impl!(model::PSI.DecisionModel{MultiRegionProblem})

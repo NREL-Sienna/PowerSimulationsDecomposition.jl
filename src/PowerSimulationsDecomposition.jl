@@ -6,11 +6,12 @@ export MultiProblemTemplate
 import PowerSimulations
 import PowerSystems
 import InfrastructureSystems
+import InfrastructureSystems: @assert_op
 import JuMP
 import Dates
 import MPI
 import MathOptInterface
-import DataStructures: SortedDict
+import DataStructures: OrderedDict, SortedDict
 
 const PSI = PowerSimulations
 const PSY = PowerSystems
