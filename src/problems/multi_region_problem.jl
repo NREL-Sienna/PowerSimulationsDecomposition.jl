@@ -339,7 +339,6 @@ function PSI.update_parameters!(
         end
     end
 
-
     if !PSI.is_synchronized(model)
         for subproblem in values(container.subproblems)
             PSI.update_objective_function!(subproblem)
@@ -353,8 +352,15 @@ end
 """
 Default problem update function for most problems with no customization
 """
-function PSI.update_model!(model::PSI.DecisionModel{MultiRegionProblem}, sim::PSI.Simulation)
-    PSI.update_model!(model, PSI.get_simulation_state(sim), PSI.get_ini_cond_chronology(sim))
+function PSI.update_model!(
+    model::PSI.DecisionModel{MultiRegionProblem},
+    sim::PSI.Simulation,
+)
+    PSI.update_model!(
+        model,
+        PSI.get_simulation_state(sim),
+        PSI.get_ini_cond_chronology(sim),
+    )
     #=
     if get_rebuild_model(model)
         container = get_optimization_container(model)
