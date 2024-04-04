@@ -184,9 +184,9 @@ function _make_parameter_arrays(subproblem_parameters, field_name)
 end
 
 function _make_array_joined_by_axes(
-    a1::JuMP.Containers.DenseAxisArray{Float64, 2},
-    a2::JuMP.Containers.DenseAxisArray{Float64, 2},
-)
+    a1::JuMP.Containers.DenseAxisArray{T, 2},
+    a2::JuMP.Containers.DenseAxisArray{U, 2},
+) where {T <: Union{Float64, JuMP.VariableRef}, U <: Union{Float64, JuMP.VariableRef}}
     ax1 = axes(a1)
     ax2 = axes(a2)
     if ax1[2] != ax2[2]
@@ -208,6 +208,8 @@ function PSI.build_impl!(model::PSI.DecisionModel{MultiRegionProblem})
     handle_initial_conditions!(model)
     PSI.build_model!(model)
     _map_containers(model)
+    container = PSI.get_optimization_container(model)
+    container.built_for_recurrent_solves = true
     # Might need custom implementation for this container type
     # serialize_metadata!(get_optimization_container(model), get_output_dir(model))
     PSI.log_values(PSI.get_settings(model))
@@ -321,5 +323,44 @@ function PSI._add_feedforward_to_model(
             end
         end
     end
+    return
+end
+
+function PSI.update_parameters!(
+    model::PSI.DecisionModel{MultiRegionProblem},
+    decision_states::PSI.DatasetContainer{PSI.InMemoryDataset},
+)
+    container = PSI.get_optimization_container(model)
+    for (ix, subproblem) in container.subproblems
+        @info "Updating subproblem $ix"
+        PSI.cost_function_unsynch(subproblem)
+        for key in keys(PSI.get_parameters(subproblem))
+            PSI.update_container_parameter_values!(subproblem, model, key, decision_states)
+        end
+    end
+
+
+    if !PSI.is_synchronized(model)
+        for subproblem in values(container.subproblems)
+            PSI.update_objective_function!(subproblem)
+            obj_func = PSI.get_objective_expression(subproblem)
+            PSI.set_synchronized_status(obj_func, true)
+        end
+    end
+    return
+end
+
+"""
+Default problem update function for most problems with no customization
+"""
+function PSI.update_model!(model::PSI.DecisionModel{MultiRegionProblem}, sim::PSI.Simulation)
+    PSI.update_model!(model, PSI.get_simulation_state(sim), PSI.get_ini_cond_chronology(sim))
+    #=
+    if get_rebuild_model(model)
+        container = get_optimization_container(model)
+        reset_optimization_model!(container)
+        build_impl!(container, get_template(model), get_system(model))
+    end
+    =#
     return
 end

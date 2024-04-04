@@ -163,6 +163,7 @@ function init_optimization_container!(
             PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
         subproblem.settings = deepcopy(settings)
         PSI.init_optimization_container!(subproblem, network_model, sys)
+        subproblem.built_for_recurrent_solves = true
     end
     _finalize_jump_model!(container, settings)
     return
