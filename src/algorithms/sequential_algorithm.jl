@@ -35,7 +35,7 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
             main_container_data_field = getproperty(container, field)
             for (key, src) in subproblem_data_field
                 if src isa JuMP.Containers.SparseAxisArray
-                    @warn "Skip SparseAxisArray" field key
+                    # @warn "Skip SparseAxisArray" field key
                     continue
                 end
                 num_dims = ndims(src)
@@ -45,7 +45,7 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
                     data = PSI.jump_value.(src)
                 catch e
                     if e isa UndefRefError
-                        @warn "Skip UndefRefError for" field key
+                        #@warn "Skip UndefRefError for" field key
                         continue
                     end
                     rethrow()
@@ -68,7 +68,6 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
         end
         _write_parameter_results_to_main_container(container, subproblem)
     end
-    # Parameters need a separate approach due to the way the containers work
     return
 end
 

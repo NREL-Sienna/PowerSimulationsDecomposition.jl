@@ -3,7 +3,7 @@ struct MultiRegionProblem <: PSI.DecisionProblem end
 function PSI.DecisionModel{MultiRegionProblem}(
     template::MultiProblemTemplate,
     sys::PSY.System,
-    ::Union{Nothing, JuMP.Model} = nothing;
+    ::Union{Nothing, JuMP.Model}=nothing;
     kwargs...,
 )
     name = Symbol(get(kwargs, :name, nameof(MultiRegionProblem)))
@@ -126,11 +126,7 @@ function _make_parameter_attributes(subproblem_parameters)
             if !haskey(data, key)
                 data[key] = deepcopy(val.attributes)
             else
-                existing = data[key]
-                if val.attributes.name != existing.name
-                    error("Mismatch in attributes name: $key $val $(existing.name)")
-                end
-                _merge_attributes!(existing, val.attributes)
+                _merge_attributes!(data[key], val.attributes)
             end
         end
     end
@@ -138,7 +134,7 @@ function _make_parameter_attributes(subproblem_parameters)
     return data
 end
 
-function _merge_attributes(attributes::T, other::T) where {T <: PSI.ParameterAttributes}
+function _merge_attributes!(attributes::T, other::T) where {T <: PSI.ParameterAttributes}
     for field in fieldnames(T)
         val1 = getproperty(attributes, field)
         val2 = getproperty(other, field)
@@ -151,6 +147,9 @@ function _merge_attributes(attributes::T, other::T) where {T <: PSI.ParameterAtt
 end
 
 function _merge_attributes!(attributes::T, other::T) where {T <: PSI.TimeSeriesAttributes}
+    if attributes.name != other.name
+        error("Mismatch in attributes name: $(attributes.name) $(other.name)")
+    end
     intersection = intersect(
         keys(attributes.component_name_to_ts_uuid),
         keys(other.component_name_to_ts_uuid),
@@ -185,9 +184,9 @@ function _make_parameter_arrays(subproblem_parameters, field_name)
 end
 
 function _make_array_joined_by_axes(
-    a1::JuMP.Containers.DenseAxisArray{Float64, 2},
-    a2::JuMP.Containers.DenseAxisArray{Float64, 2},
-)
+    a1::JuMP.Containers.DenseAxisArray{T, 2},
+    a2::JuMP.Containers.DenseAxisArray{U, 2},
+) where {T <: Union{Float64, JuMP.VariableRef}, U <: Union{Float64, JuMP.VariableRef}}
     ax1 = axes(a1)
     ax2 = axes(a2)
     if ax1[2] != ax2[2]
@@ -209,6 +208,8 @@ function PSI.build_impl!(model::PSI.DecisionModel{MultiRegionProblem})
     handle_initial_conditions!(model)
     PSI.build_model!(model)
     _map_containers(model)
+    container = PSI.get_optimization_container(model)
+    container.built_for_recurrent_solves = true
     # Might need custom implementation for this container type
     # serialize_metadata!(get_optimization_container(model), get_output_dir(model))
     PSI.log_values(PSI.get_settings(model))
@@ -261,3 +262,111 @@ function PSI.solve_impl!(model::PSI.DecisionModel{MultiRegionProblem})
 end
 
 function PSI._check_numerical_bounds(model::PSI.DecisionModel{MultiRegionProblem}) end
+
+### Simulation Related methods ###
+# These code blocks are duplicative from PSI, refactoring might be required on the PSI side to
+# avoid duplication.
+
+function PSI._add_feedforward_to_model(
+    sim_model::PSI.DecisionModel{MultiRegionProblem},
+    ff::T,
+    ::Type{U},
+) where {T <: PSI.AbstractAffectFeedforward, U <: PSY.Device}
+    template = PSI.get_template(sim_model)
+    for (id, sub_template) in get_sub_templates(template)
+        device_model = PSI.get_model(sub_template, PSI.get_component_type(ff))
+        if device_model === nothing
+            model_name = PSI.get_name(sim_model)
+            throw(
+                IS.ConflictingInputsError(
+                    "Device model $(PSI.get_component_type(ff)) not found in model $model_name",
+                ),
+            )
+        end
+        @info "attaching $T to $(PSI.get_component_type(ff)) to Template $id"
+        PSI.attach_feedforward!(device_model, ff)
+    end
+    return
+end
+
+function PSI._add_feedforward_to_model(
+    sim_model::PSI.DecisionModel{MultiRegionProblem},
+    ff::T,
+    ::Type{U},
+) where {T <: PSI.AbstractAffectFeedforward, U <: PSY.Service}
+    template = PSI.get_template(sim_model)
+    name_provided = PSI.get_feedforward_meta(ff) != PSI.NO_SERVICE_NAME_PROVIDED
+    for (id, sub_template) in get_sub_templates(template)
+        if name_provided
+            service_model = PSI.get_model(
+                sub_template,
+                PSI.get_component_type(ff),
+                PSI.get_feedforward_meta(ff),
+            )
+            if service_model === nothing
+                throw(
+                    IS.ConflictingInputsError(
+                        "Service model $(get_component_type(ff)) not found in model $(get_name(sim_model))",
+                    ),
+                )
+            end
+            @info "attaching $T to $(PSI.get_component_type(ff)) $(PSI.get_feedforward_meta(ff)) to Template $id"
+            PSI.attach_feedforward!(service_model, ff)
+        else
+            service_found = false
+            for (key, model) in PSI.get_service_models(sub_template)
+                if key[2] == Symbol(PSI.get_component_type(ff))
+                    service_found = true
+                    @info "attaching $T to $(PSI.get_component_type(ff))"
+                    PSI.attach_feedforward!(model, ff)
+                end
+            end
+        end
+    end
+    return
+end
+
+function PSI.update_parameters!(
+    model::PSI.DecisionModel{MultiRegionProblem},
+    decision_states::PSI.DatasetContainer{PSI.InMemoryDataset},
+)
+    container = PSI.get_optimization_container(model)
+    for (ix, subproblem) in container.subproblems
+        @info "Updating subproblem $ix"
+        PSI.cost_function_unsynch(subproblem)
+        for key in keys(PSI.get_parameters(subproblem))
+            PSI.update_container_parameter_values!(subproblem, model, key, decision_states)
+        end
+    end
+
+    if !PSI.is_synchronized(model)
+        for subproblem in values(container.subproblems)
+            PSI.update_objective_function!(subproblem)
+            obj_func = PSI.get_objective_expression(subproblem)
+            PSI.set_synchronized_status(obj_func, true)
+        end
+    end
+    return
+end
+
+"""
+Default problem update function for most problems with no customization
+"""
+function PSI.update_model!(
+    model::PSI.DecisionModel{MultiRegionProblem},
+    sim::PSI.Simulation,
+)
+    PSI.update_model!(
+        model,
+        PSI.get_simulation_state(sim),
+        PSI.get_ini_cond_chronology(sim),
+    )
+    #=
+    if get_rebuild_model(model)
+        container = get_optimization_container(model)
+        reset_optimization_model!(container)
+        build_impl!(container, get_template(model), get_system(model))
+    end
+    =#
+    return
+end
