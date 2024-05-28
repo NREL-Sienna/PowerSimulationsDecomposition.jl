@@ -103,7 +103,7 @@ function solve_impl!(
     sys::PSY.System,
 )
     # Solve main problem
-    status = PSI.RunStatus.SUCCESSFUL
+    status = ISSIM.RunStatus.SUCCESSFUL
     for (index, subproblem) in container.subproblems
         @info "Solving problem $index"
         status = PSI.solve_impl!(subproblem, sys)

@@ -8,7 +8,7 @@ function PSI.DecisionModel{MultiRegionProblem}(
 )
     name = Symbol(get(kwargs, :name, nameof(MultiRegionProblem)))
     settings = PSI.Settings(sys; [k for k in kwargs if first(k) ∉ [:name]]...)
-    internal = PSI.ModelInternal(
+    internal = ISOPT.ModelInternal(
         MultiOptimizationContainer(
             SequentialAlgorithm,
             sys,
@@ -21,15 +21,17 @@ function PSI.DecisionModel{MultiRegionProblem}(
 
     finalize_template!(template_, sys)
 
-    # return multi-region decision model container
-    return PSI.DecisionModel{MultiRegionProblem}(
+    model = PSI.DecisionModel{MultiRegionProblem}(
         name,
         template_,
         sys,
         internal,
+        PSI.SimulationInfo(),
         PSI.DecisionModelStore(),
         Dict{String, Any}(),
     )
+    PSI.validate_time_series!(model)
+    return model
 end
 
 function _join_axes!(axes_data::OrderedDict{Int, Set}, ix::Int, axes_value::UnitRange{Int})
@@ -225,7 +227,7 @@ function build_pre_step!(model::PSI.DecisionModel{MultiRegionProblem})
     )
     @info "Initializing ModelStoreParams"
     PSI.init_model_store_params!(model)
-    PSI.set_status!(model, PSI.BuildStatus.IN_PROGRESS)
+    PSI.set_status!(model, ISOPT.ModelBuildStatus.IN_PROGRESS)
     return
 end
 

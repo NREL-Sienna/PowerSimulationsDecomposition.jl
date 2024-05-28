@@ -16,6 +16,8 @@ import DataStructures: OrderedDict, SortedDict
 const PSI = PowerSimulations
 const PSY = PowerSystems
 const IS = InfrastructureSystems
+const ISOPT = InfrastructureSystems.Optimization
+const ISSIM = InfrastructureSystems.Simulation
 const PM = PSI.PM
 const MOI = MathOptInterface
 
