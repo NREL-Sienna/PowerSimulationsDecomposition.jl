@@ -200,10 +200,6 @@ function PSI.set_service_model!(
     return
 end
 
-function PSI.get_model(template::MultiProblemTemplate, ::Type{T}) where {T <: PSY.Device}
-    return PSI.get_model(template.base_template, T)
-end
-
 function finalize_template!(template::MultiProblemTemplate, sys::PSY.System)
     PSI.finalize_template!(template.base_template, sys)
     for (ix, sub_template) in get_sub_templates(template)
