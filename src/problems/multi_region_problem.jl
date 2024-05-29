@@ -334,7 +334,7 @@ function PSI.update_parameters!(
 )
     container = PSI.get_optimization_container(model)
     for (ix, subproblem) in container.subproblems
-        @info "Updating subproblem $ix"
+        @debug "Updating subproblem $ix"
         PSI.cost_function_unsynch(subproblem)
         for key in keys(PSI.get_parameters(subproblem))
             PSI.update_container_parameter_values!(subproblem, model, key, decision_states)

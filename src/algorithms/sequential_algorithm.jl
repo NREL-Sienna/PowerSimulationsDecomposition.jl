@@ -105,7 +105,7 @@ function solve_impl!(
     # Solve main problem
     status = ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
     for (index, subproblem) in container.subproblems
-        @info "Solving problem $index"
+        @debug "Solving problem $index"
         status = PSI.solve_impl!(subproblem, sys)
     end
     write_results_to_main_container(container)
