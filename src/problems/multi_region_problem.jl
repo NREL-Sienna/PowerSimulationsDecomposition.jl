@@ -285,7 +285,7 @@ function PSI._add_feedforward_to_model(
                 ),
             )
         end
-        @info "attaching $T to $(PSI.get_component_type(ff)) to Template $id"
+        @info "Attaching $T to $(PSI.get_component_type(ff)) to Template $id"
         PSI.attach_feedforward!(device_model, ff)
     end
     return
@@ -312,14 +312,14 @@ function PSI._add_feedforward_to_model(
                     ),
                 )
             end
-            @info "attaching $T to $(PSI.get_component_type(ff)) $(PSI.get_feedforward_meta(ff)) to Template $id"
+            @info "Attaching $T to $(PSI.get_component_type(ff)) $(PSI.get_feedforward_meta(ff)) to Template $id"
             PSI.attach_feedforward!(service_model, ff)
         else
             service_found = false
             for (key, model) in PSI.get_service_models(sub_template)
                 if key[2] == Symbol(PSI.get_component_type(ff))
                     service_found = true
-                    @info "attaching $T to $(PSI.get_component_type(ff))"
+                    @info "Attaching $T to $(PSI.get_component_type(ff))"
                     PSI.attach_feedforward!(model, ff)
                 end
             end

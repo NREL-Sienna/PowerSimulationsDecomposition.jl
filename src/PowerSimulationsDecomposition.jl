@@ -3,7 +3,10 @@ module PowerSimulationsDecomposition
 export MultiRegionProblem
 export MultiProblemTemplate
 
+export SplitAreaPTDFPowerModel
+
 import PowerSimulations
+import PowerNetworkMatrices
 import PowerSystems
 import InfrastructureSystems
 import InfrastructureSystems: @assert_op
@@ -15,6 +18,7 @@ import DataStructures: OrderedDict, SortedDict
 
 const PSI = PowerSimulations
 const PSY = PowerSystems
+const PNM = PowerNetworkMatrices
 const IS = InfrastructureSystems
 const ISOPT = InfrastructureSystems.Optimization
 const ISSIM = InfrastructureSystems.Simulation
@@ -34,6 +38,7 @@ include("multi_optimization_container.jl")
 include("algorithms/sequential_algorithm.jl")
 include("algorithms/mpi_parallel_algorithm.jl")
 include("problems/multi_region_problem.jl")
+include("models/network_models.jl")
 include("print.jl")
 
 end
