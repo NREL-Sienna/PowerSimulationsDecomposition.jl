@@ -103,11 +103,17 @@ function solve_impl!(
     sys::PSY.System,
 )
     # Solve main problem
-    status = ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
+    status = ISSIM.RunStatus.RUNNING
     for (index, subproblem) in container.subproblems
-        @debug "Solving problem $index"
-        status = PSI.solve_impl!(subproblem, sys)
+        @info "Solving problem $index"
+        @show status = PSI.solve_impl!(subproblem, sys)
+        @show status != ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
+        if status != ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
+            return status
+        end
+        error()
     end
+
     write_results_to_main_container(container)
     return status
 end

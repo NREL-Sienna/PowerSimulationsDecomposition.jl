@@ -34,6 +34,42 @@ function PSI.DecisionModel{MultiRegionProblem}(
     return model
 end
 
+function PSI.validate_time_series!(model::PSI.DecisionModel{MultiRegionProblem})
+    sys = PSI.get_system(model)
+    settings = PSI.get_settings(model)
+    available_resolutions = PSY.get_time_series_resolutions(sys)
+
+    if PSI.get_resolution(settings) == PSI.UNSET_RESOLUTION && length(available_resolutions) != 1
+        throw(
+            IS.ConflictingInputsError(
+                "Data contains multiple resolutions, the resolution keyword argument must be added to the Model. Time Series Resolutions: $(available_resolutions)",
+            ),
+        )
+    elseif PSI.get_resolution(settings) != PSI.UNSET_RESOLUTION && length(available_resolutions) > 1
+        if PSI.get_resolution(settings) ∉ available_resolutions
+            throw(
+                IS.ConflictingInputsError(
+                    "Resolution $(get_resolution(settings)) is not available in the system data. Time Series Resolutions: $(available_resolutions)",
+                ),
+            )
+        end
+    else
+        PSI.set_resolution!(settings, first(available_resolutions))
+    end
+
+    if PSI.get_horizon(settings) == PSI.UNSET_HORIZON
+        PSI.set_horizon!(settings, PSY.get_forecast_horizon(sys))
+    end
+
+    counts = PSY.get_time_series_counts(sys)
+    if counts.forecast_count < 1
+        error(
+            "The system does not contain forecast data. A DecisionModel can't be built.",
+        )
+    end
+    return
+end
+
 function _join_axes!(axes_data::OrderedDict{Int, Set}, ix::Int, axes_value::UnitRange{Int})
     _axes_data = get!(axes_data, ix, Set{UnitRange{Int}}())
     if _axes_data == axes_value
@@ -204,6 +240,7 @@ function _make_array_joined_by_axes(
 end
 
 function PSI.build_impl!(model::PSI.DecisionModel{MultiRegionProblem})
+
     build_pre_step!(model)
     @info "Instantiating Network Model"
     instantiate_network_model(model)
@@ -219,7 +256,7 @@ function PSI.build_impl!(model::PSI.DecisionModel{MultiRegionProblem})
 end
 
 function build_pre_step!(model::PSI.DecisionModel{MultiRegionProblem})
-    @info "Initializing Optimization Container For a DecisionModel"
+    @info "Initializing Optimization Container For a MultiRegionProblem DecisionModel"
     init_optimization_container!(
         PSI.get_optimization_container(model),
         PSI.get_network_model(PSI.get_template(model)),
@@ -260,6 +297,16 @@ end
 function PSI.solve_impl!(model::PSI.DecisionModel{MultiRegionProblem})
     status = solve_impl!(PSI.get_optimization_container(model), PSI.get_system(model))
     PSI.set_run_status!(model, status)
+    if status != ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
+        settings = PSI.get_settings(model)
+        model_name = PSI.get_name(model)
+        ts = PSI.get_current_timestamp(model)
+        if !PSI.get_allow_fails(settings)
+            error("Solving model $(model_name) failed at $(ts)")
+        else
+            @error "Solving model $(model_name) failed at $(ts). Failure Allowed"
+        end
+    end
     return
 end
 
