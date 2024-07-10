@@ -105,13 +105,11 @@ function solve_impl!(
     # Solve main problem
     status = ISSIM.RunStatus.RUNNING
     for (index, subproblem) in container.subproblems
-        @info "Solving problem $index"
-        @show status = PSI.solve_impl!(subproblem, sys)
-        @show status != ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
+        @debug "Solving problem $index"
+        status = PSI.solve_impl!(subproblem, sys)
         if status != ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
             return status
         end
-        error()
     end
 
     write_results_to_main_container(container)
