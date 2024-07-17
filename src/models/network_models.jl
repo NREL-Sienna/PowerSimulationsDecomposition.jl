@@ -326,6 +326,42 @@ function _update_parameter_values!(
     return
 end
 
+function PSI.add_to_expression!(
+    container::PSI.OptimizationContainer,
+    ::Type{PSI.ActivePowerBalance},
+    ::Type{PSI.FlowActivePowerVariable},
+    devices::IS.FlattenIteratorWrapper{PSY.AreaInterchange},
+    ::PSI.DeviceModel{PSY.AreaInterchange, <: PSI.AbstractBranchFormulation},
+    network_model::PSI.NetworkModel{SplitAreaPTDFPowerModel},
+)
+    flow_variable = PSI.get_variable(container, PSI.FlowActivePowerVariable(), PSY.AreaInterchange)
+    expression = PSI.get_expression(container, PSI.ActivePowerBalance(), PSY.Area)
+    subsys= PSI.get_subsystem(network_model)
+    area_names, _ = axes(expression)
+    for d in devices
+        area_from_name = PSY.get_name(PSY.get_from_area(d))
+        area_to_name = PSY.get_name(PSY.get_to_area(d))
+        for t in PSI.get_time_steps(container)
+            if area_from_name ∈ area_names
+                PSI._add_to_jump_expression!(
+                    expression[area_from_name, t],
+                    flow_variable[PSY.get_name(d), t],
+                    -1.0,
+                )
+            end
+            if area_to_name ∈ area_names
+                PSI._add_to_jump_expression!(
+                    expression[area_to_name, t],
+                    flow_variable[PSY.get_name(d), t],
+                    1.0,
+                )
+            end
+        end
+    end
+    return
+end
+
+
 """
 Update parameter function an OperationModel
 """
