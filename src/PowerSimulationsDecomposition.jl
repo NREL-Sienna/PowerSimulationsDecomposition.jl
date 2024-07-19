@@ -36,6 +36,7 @@ include("core/definitions.jl")
 include("core/formulations.jl")
 include("core/mpi_info.jl")
 include("core/parameters.jl")
+include("core/auxiliary_variables.jl")
 
 include("multiproblem_template.jl")
 include("multi_optimization_container.jl")
