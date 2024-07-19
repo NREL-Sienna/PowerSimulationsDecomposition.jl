@@ -17,7 +17,13 @@ function PSI.construct_network!(
     if PSI.get_use_slacks(model)
         PSI.add_variables!(container, PSI.SystemBalanceSlackUp, sys, model)
         PSI.add_variables!(container, PSI.SystemBalanceSlackDown, sys, model)
-        PSI.add_to_expression!(container, PSI.ActivePowerBalance, PSI.SystemBalanceSlackUp, sys, model)
+        PSI.add_to_expression!(
+            container,
+            PSI.ActivePowerBalance,
+            PSI.SystemBalanceSlackUp,
+            sys,
+            model,
+        )
         PSI.add_to_expression!(
             container,
             PSI.ActivePowerBalance,
@@ -29,12 +35,12 @@ function PSI.construct_network!(
     end
     PSI.add_parameters!(container, StateEstimationInjections, sys, model)
     PSI.add_to_expression!(
-            container,
-            PSI.ActivePowerBalance,
-            StateEstimationInjections,
-            sys,
-            model,
-        )
+        container,
+        PSI.ActivePowerBalance,
+        StateEstimationInjections,
+        sys,
+        model,
+    )
     PSI.add_constraints!(container, PSI.CopperPlateBalanceConstraint, sys, model)
     PSI.add_constraints!(container, PSI.NodalBalanceActiveConstraint, sys, model)
     PSI.add_constraint_dual!(container, sys, model)
@@ -49,15 +55,12 @@ function PSI.add_constraints!(
     ::Type{T},
     sys::U,
     network_model::PSI.NetworkModel{SplitAreaPTDFPowerModel},
-) where {
-    T <: PSI.CopperPlateBalanceConstraint,
-    U <: PSY.System,
-}
+) where {T <: PSI.CopperPlateBalanceConstraint, U <: PSY.System}
     time_steps = PSI.get_time_steps(container)
     expressions = PSI.get_expression(container, PSI.ActivePowerBalance(), PSY.Area)
     area_names = PSY.get_name.(PSI.get_available_components(network_model, PSY.Area, sys))
     constraint =
-    PSI.add_constraints_container!(container, T(), PSY.Area, area_names, time_steps)
+        PSI.add_constraints_container!(container, T(), PSY.Area, area_names, time_steps)
     jm = PSI.get_jump_model(container)
     for t in time_steps, k in area_names
         constraint[k, t] = JuMP.@constraint(jm, expressions[k, t] == 0)
@@ -73,8 +76,9 @@ function PSI.add_to_expression!(
     sys::PSY.System,
     network_model::PSI.NetworkModel{SplitAreaPTDFPowerModel},
 )
-    parameter_array = PSI.get_parameter_array(container, StateEstimationInjections(), PSY.ACBus)
-    subsys= PSI.get_subsystem(network_model)
+    parameter_array =
+        PSI.get_parameter_array(container, StateEstimationInjections(), PSY.ACBus)
+    subsys = PSI.get_subsystem(network_model)
     all_buses = PSY.get_components(
         x -> PSY.get_bustype(x) != PSY.ACBusTypes.ISOLATED,
         PSY.ACBus,
@@ -98,7 +102,6 @@ function PSI.add_to_expression!(
     end
     return
 end
-
 
 function PSI.objective_function!(
     container::PSI.OptimizationContainer,
@@ -124,9 +127,8 @@ function PSI.add_parameters!(
     sys::PSY.System,
     network_model::PSI.NetworkModel{SplitAreaPTDFPowerModel},
 )
-
     time_steps = PSI.get_time_steps(container)
-    subsys= PSI.get_subsystem(network_model)
+    subsys = PSI.get_subsystem(network_model)
 
     all_buses = PSY.get_components(
         x -> PSY.get_bustype(x) != PSY.ACBusTypes.ISOLATED,
@@ -135,7 +137,8 @@ function PSI.add_parameters!(
     )
 
     # These are the buses not in the same subsystem as the one being built
-    bus_numbers = [string(PSY.get_number(b)) for b in all_buses if !PSY.has_component(sys, subsys, b)]
+    bus_numbers =
+        [string(PSY.get_number(b)) for b in all_buses if !PSY.has_component(sys, subsys, b)]
     @assert !isempty(bus_numbers)
 
     parameter_container = PSI.add_param_container!(
@@ -144,25 +147,15 @@ function PSI.add_parameters!(
         PSY.ACBus,
         ISOPT.ExpressionKey{PSI.ActivePowerBalance, PSY.ACBus}(""),
         bus_numbers,
-        time_steps)
+        time_steps,
+    )
 
     time_steps = PSI.get_time_steps(container)
     jump_model = PSI.get_jump_model(container)
 
     for b_no in bus_numbers, t in time_steps
-        PSI.set_multiplier!(
-                parameter_container,
-                1.0,
-                b_no,
-                t,
-            )
-        PSI.set_parameter!(
-                parameter_container,
-                jump_model,
-                0.0,
-                b_no,
-                t,
-            )
+        PSI.set_multiplier!(parameter_container, 1.0, b_no, t)
+        PSI.set_parameter!(parameter_container, jump_model, 0.0, b_no, t)
     end
     return
 end
@@ -186,7 +179,7 @@ function PSI.initialize_system_expressions!(
         dc_bus_numbers,
         PSI.AreaPTDFPowerModel,
         areas,
-        bus_reduction_map
+        bus_reduction_map,
     )
     return
 end
@@ -265,13 +258,10 @@ function PSI.add_variables!(
     ::Type{T},
     sys::PSY.System,
     network_model::PSI.NetworkModel{SplitAreaPTDFPowerModel},
-) where {
-    T <: Union{PSI.SystemBalanceSlackUp, PSI.SystemBalanceSlackDown},
-}
+) where {T <: Union{PSI.SystemBalanceSlackUp, PSI.SystemBalanceSlackDown}}
     time_steps = PSI.get_time_steps(container)
     areas = PSY.get_name.(PSI.get_available_components(network_model, PSY.Area, sys))
-    variable =
-        PSI.add_variable_container!(container, T(), PSY.Area, areas, time_steps)
+    variable = PSI.add_variable_container!(container, T(), PSY.Area, areas, time_steps)
 
     for t in time_steps, area in areas
         variable[area, t] = JuMP.@variable(
@@ -303,7 +293,7 @@ function _update_parameter_values!(
         t_step = model_resolution ÷ state_data.resolution
     end
     state_data_index = PSI.find_timestamp_index(state_timestamps, current_time)
-    sim_timestamps = range(current_time; step = model_resolution, length = time[end])
+    sim_timestamps = range(current_time; step=model_resolution, length=time[end])
     for t in time
         timestamp_ix = min(max_state_index, state_data_index + t_step)
         @debug "parameter horizon is over the step" max_state_index > state_data_index + 1
@@ -331,12 +321,13 @@ function PSI.add_to_expression!(
     ::Type{PSI.ActivePowerBalance},
     ::Type{PSI.FlowActivePowerVariable},
     devices::IS.FlattenIteratorWrapper{PSY.AreaInterchange},
-    ::PSI.DeviceModel{PSY.AreaInterchange, <: PSI.AbstractBranchFormulation},
+    ::PSI.DeviceModel{PSY.AreaInterchange, <:PSI.AbstractBranchFormulation},
     network_model::PSI.NetworkModel{SplitAreaPTDFPowerModel},
 )
-    flow_variable = PSI.get_variable(container, PSI.FlowActivePowerVariable(), PSY.AreaInterchange)
+    flow_variable =
+        PSI.get_variable(container, PSI.FlowActivePowerVariable(), PSY.AreaInterchange)
     expression = PSI.get_expression(container, PSI.ActivePowerBalance(), PSY.Area)
-    subsys= PSI.get_subsystem(network_model)
+    subsys = PSI.get_subsystem(network_model)
     area_names, _ = axes(expression)
     for d in devices
         area_from_name = PSY.get_name(PSY.get_from_area(d))
@@ -360,7 +351,6 @@ function PSI.add_to_expression!(
     end
     return
 end
-
 
 """
 Update parameter function an OperationModel
