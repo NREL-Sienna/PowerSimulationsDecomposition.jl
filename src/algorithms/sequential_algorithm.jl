@@ -8,6 +8,19 @@ function build_impl!(
         PSI.build_impl!(get_subproblem(container, index), sub_template, sys)
     end
 
+
+    ml = PSY.get_components(PSY.MonitoredLine, sys)
+    time_steps = PSI.get_time_steps(container)
+
+
+    key1 = ISOPT.AuxVarKey{SharedFlowActivePower, PSY.MonitoredLine}("1")
+    key2 = ISOPT.AuxVarKey{SharedFlowActivePower, PSY.MonitoredLine}("2")
+
+    ml_names = PSY.get_name.(ml)
+
+    container.aux_variables[key1] = JuMP.Containers.DenseAxisArray{Float64}(undef, ml_names, time_steps)
+    container.aux_variables[key2] = JuMP.Containers.DenseAxisArray{Float64}(undef, ml_names, time_steps)
+
     build_main_problem!(container, template, sys)
 
     check_optimization_container(container)
@@ -19,7 +32,20 @@ function build_main_problem!(
     container::MultiOptimizationContainer{SequentialAlgorithm},
     template::MultiProblemTemplate,
     sys::PSY.System,
-) end
+)
+
+
+    #=
+    src = subproblem.variables[ISOPT.VariableKey{PSI.FlowActivePowerVariable, PSY.MonitoredLine}("")]
+    data = PSI.jump_value.(src)
+    @show data
+    src = subproblem.variables[ISOPT.VariableKey{PSI.FlowActivePowerVariable, PSY.AreaInterchange}("")]
+    data = PSI.jump_value.(src)
+    @show data
+    =#
+
+
+end
 
 # The drawback of this approach is that it will loop over the results twice
 # once to write into the main container and a second time when writing into the
@@ -110,8 +136,16 @@ function solve_impl!(
         if status != ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
             return status
         end
-    end
+        src = subproblem.variables[ISOPT.VariableKey{PSI.FlowActivePowerVariable, PSY.MonitoredLine}("")]
+        data = PSI.jump_value.(src)
+        names, time_steps = axes(data)
+        key = ISOPT.AuxVarKey{SharedFlowActivePower, PSY.MonitoredLine}(index)
+        cont = container.aux_variables[key]
+        for n in names, t in time_steps
+            cont[n, t] = data[n, t]
+        end
 
+    end
     write_results_to_main_container(container)
     return status
 end
