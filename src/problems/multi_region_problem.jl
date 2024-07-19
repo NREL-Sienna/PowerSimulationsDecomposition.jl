@@ -39,13 +39,15 @@ function PSI.validate_time_series!(model::PSI.DecisionModel{MultiRegionProblem})
     settings = PSI.get_settings(model)
     available_resolutions = PSY.get_time_series_resolutions(sys)
 
-    if PSI.get_resolution(settings) == PSI.UNSET_RESOLUTION && length(available_resolutions) != 1
+    if PSI.get_resolution(settings) == PSI.UNSET_RESOLUTION &&
+       length(available_resolutions) != 1
         throw(
             IS.ConflictingInputsError(
                 "Data contains multiple resolutions, the resolution keyword argument must be added to the Model. Time Series Resolutions: $(available_resolutions)",
             ),
         )
-    elseif PSI.get_resolution(settings) != PSI.UNSET_RESOLUTION && length(available_resolutions) > 1
+    elseif PSI.get_resolution(settings) != PSI.UNSET_RESOLUTION &&
+           length(available_resolutions) > 1
         if PSI.get_resolution(settings) ∉ available_resolutions
             throw(
                 IS.ConflictingInputsError(
@@ -63,9 +65,7 @@ function PSI.validate_time_series!(model::PSI.DecisionModel{MultiRegionProblem})
 
     counts = PSY.get_time_series_counts(sys)
     if counts.forecast_count < 1
-        error(
-            "The system does not contain forecast data. A DecisionModel can't be built.",
-        )
+        error("The system does not contain forecast data. A DecisionModel can't be built.")
     end
     return
 end
@@ -115,6 +115,11 @@ function _make_joint_axes!(dim1::Set{UnitRange{Int}})
     return (first(dim1),)
 end
 
+function _make_joint_axes!(dim1::Set{String})
+    @error dim1
+    return (collect(dim1),)
+end
+
 function _map_containers(model::PSI.DecisionModel{MultiRegionProblem})
     common_axes = Dict{Symbol, Dict{PSI.OptimizationContainerKey, OrderedDict{Int, Set}}}(
         key => Dict{PSI.OptimizationContainerKey, OrderedDict{Int, Set}}() for
@@ -128,6 +133,7 @@ function _map_containers(model::PSI.DecisionModel{MultiRegionProblem})
     for (field, vals) in common_axes
         field_data = getproperty(container, field)
         for (key, axes_data) in vals
+            @show key
             ax = _make_joint_axes!(collect(values(axes_data))...)
             field_data[key] = JuMP.Containers.DenseAxisArray{Float64}(undef, ax...)
         end
@@ -240,7 +246,6 @@ function _make_array_joined_by_axes(
 end
 
 function PSI.build_impl!(model::PSI.DecisionModel{MultiRegionProblem})
-
     build_pre_step!(model)
     @info "Instantiating Network Model"
     instantiate_network_model(model)
@@ -366,7 +371,7 @@ function PSI._add_feedforward_to_model(
             for (key, model) in PSI.get_service_models(sub_template)
                 if key[2] == Symbol(PSI.get_component_type(ff))
                     service_found = true
-                    @info "Attaching $T to $(PSI.get_component_type(ff))"
+                    @info "Attaching $T to $(PSI.get_component_type(ff)) to Template $id"
                     PSI.attach_feedforward!(model, ff)
                 end
             end
