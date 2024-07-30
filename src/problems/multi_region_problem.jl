@@ -133,7 +133,6 @@ function _map_containers(model::PSI.DecisionModel{MultiRegionProblem})
     for (field, vals) in common_axes
         field_data = getproperty(container, field)
         for (key, axes_data) in vals
-            @show key
             ax = _make_joint_axes!(collect(values(axes_data))...)
             field_data[key] = JuMP.Containers.DenseAxisArray{Float64}(undef, ax...)
         end
