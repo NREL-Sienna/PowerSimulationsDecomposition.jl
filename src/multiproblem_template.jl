@@ -67,6 +67,18 @@ function PSI.get_model(template::MultiProblemTemplate, ::Type{T}) where {T <: PS
     end
 end
 
+function PSI.get_model(template::MultiProblemTemplate, ::Type{T}, subsystem::String) where {T <: PSY.Device}
+    base_template = template.sub_templates[subsystem]
+    if T <: PSY.Branch
+        return get(base_template.branches, Symbol(T), nothing)
+    elseif T <: PSY.Device
+        return get(base_template.devices, Symbol(T), nothing)
+    else
+        error("Component $T not present in the template")
+    end
+end
+
+
 """
 Sets the network model in a template.
 """
