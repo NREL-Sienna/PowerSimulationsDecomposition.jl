@@ -136,6 +136,7 @@ function solve_impl!(
         if status != ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
             return status
         end
+        #=
         src = subproblem.variables[ISOPT.VariableKey{PSI.FlowActivePowerVariable, PSY.MonitoredLine}("")]
         data = PSI.jump_value.(src)
         names, time_steps = axes(data)
@@ -144,7 +145,7 @@ function solve_impl!(
         for n in names, t in time_steps
             cont[n, t] = data[n, t]
         end
-
+        =#
     end
     write_results_to_main_container(container)
     return status
