@@ -381,14 +381,14 @@ end
 
 function PSI.update_parameters!(
     model::PSI.DecisionModel{MultiRegionProblem},
-    decision_states::PSI.DatasetContainer{PSI.InMemoryDataset},
+    simulation_state::PSI.SimulationState,
 )
     container = PSI.get_optimization_container(model)
     for (ix, subproblem) in container.subproblems
         @debug "Updating subproblem $ix"
         PSI.cost_function_unsynch(subproblem)
         for key in keys(PSI.get_parameters(subproblem))
-            PSI.update_container_parameter_values!(subproblem, model, key, decision_states)
+            PSI.update_container_parameter_values!(subproblem, model, key, simulation_state)
         end
     end
 
@@ -421,5 +421,45 @@ function PSI.update_model!(
         build_impl!(container, get_template(model), get_system(model))
     end
     =#
+    return
+end
+
+# Code Copied here for debugging purposes
+function PSI.update_system_state!(
+    state::PSI.DatasetContainer{PSI.InMemoryDataset},
+    key::ISOPT.ExpressionKey{PSI.ActivePowerBalance, PSY.ACBus},
+    decision_state::PSI.DatasetContainer{PSI.InMemoryDataset},
+    simulation_time::Dates.DateTime,
+)
+    decision_dataset = PSI.get_dataset(decision_state, key)
+    # Gets the timestamp of the value used for the update, which might not match exactly the
+    # simulation time since the value might have not been updated yet
+    ts = PSI.get_value_timestamp(decision_dataset, simulation_time)
+    system_dataset = PSI.get_dataset(state, key)
+    PSI.get_update_timestamp(system_dataset)
+    if ts == PSI.get_update_timestamp(system_dataset)
+        # Uncomment for debugging
+        #@warn "Skipped overwriting data with the same timestamp \\
+        #       key: $(encode_key_as_string(key)), $(simulation_time), $ts"
+        return
+    end
+
+    if PSI.get_update_timestamp(system_dataset) > ts
+        error("Trying to update with past data a future state timestamp \\
+            key: $(PSI.encode_key_as_string(key)), $(simulation_time), $ts")
+    end
+
+    # Writes the timestamp of the value used for the update
+    PSI.set_update_timestamp!(system_dataset, ts)
+    # Keep coordination between fields. System state is an array of size 1
+    system_dataset.timestamps[1] = ts
+    data_set_value = PSI.get_dataset_value(decision_dataset, simulation_time)
+    # @debug decision_dataset.values["10313", :]
+    system_dataset = PSI.get_dataset(state, key)
+    # @debug "current" PSI.get_dataset(state, key).values["10313", 1]
+    PSI.set_dataset_values!(state, key, 1, data_set_value)
+    # @debug "updated" PSI.get_dataset(state, key).values["10313", 1]
+    # This value shouldn't be other than one and after one execution is no-op.
+    PSI.set_last_recorded_row!(system_dataset, 1)
     return
 end

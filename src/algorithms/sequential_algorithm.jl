@@ -8,19 +8,6 @@ function build_impl!(
         PSI.build_impl!(get_subproblem(container, index), sub_template, sys)
     end
 
-
-    ml = PSY.get_components(PSY.MonitoredLine, sys)
-    time_steps = PSI.get_time_steps(container)
-
-
-    key1 = ISOPT.AuxVarKey{SharedFlowActivePower, PSY.MonitoredLine}("1")
-    key2 = ISOPT.AuxVarKey{SharedFlowActivePower, PSY.MonitoredLine}("2")
-
-    ml_names = PSY.get_name.(ml)
-
-    container.aux_variables[key1] = JuMP.Containers.DenseAxisArray{Float64}(undef, ml_names, time_steps)
-    container.aux_variables[key2] = JuMP.Containers.DenseAxisArray{Float64}(undef, ml_names, time_steps)
-
     build_main_problem!(container, template, sys)
 
     check_optimization_container(container)
@@ -33,18 +20,6 @@ function build_main_problem!(
     template::MultiProblemTemplate,
     sys::PSY.System,
 )
-
-
-    #=
-    src = subproblem.variables[ISOPT.VariableKey{PSI.FlowActivePowerVariable, PSY.MonitoredLine}("")]
-    data = PSI.jump_value.(src)
-    @show data
-    src = subproblem.variables[ISOPT.VariableKey{PSI.FlowActivePowerVariable, PSY.AreaInterchange}("")]
-    data = PSI.jump_value.(src)
-    @show data
-    =#
-
-
 end
 
 # The drawback of this approach is that it will loop over the results twice
@@ -55,23 +30,26 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
     # TODO: This process needs to work in parallel almost right away
     # TODO: This doesn't handle the case where subproblems have an overlap in axis names.
 
-    for subproblem in values(container.subproblems)
+    for (k, subproblem) in container.subproblems
         for field in CONTAINER_FIELDS
             subproblem_data_field = getproperty(subproblem, field)
             main_container_data_field = getproperty(container, field)
             for (key, src) in subproblem_data_field
                 if src isa JuMP.Containers.SparseAxisArray
-                    # @warn "Skip SparseAxisArray" field key
+                    @debug "Skip SparseAxisArray" field key
                     continue
                 end
                 num_dims = ndims(src)
                 num_dims > 2 && error("ndims = $(num_dims) is not supported yet")
                 data = nothing
                 try
+                    if key == ISOPT.ExpressionKey{PSI.ActivePowerBalance, PSY.ACBus}("")
+                        @error "mt exp $k" data = PSI.jump_value.(src)[10313, :]
+                    end
                     data = PSI.jump_value.(src)
                 catch e
                     if e isa UndefRefError
-                        #@warn "Skip UndefRefError for" field key
+                        @error "Skip UndefRefError for" field key
                         continue
                     end
                     rethrow()
@@ -136,16 +114,6 @@ function solve_impl!(
         if status != ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
             return status
         end
-        #=
-        src = subproblem.variables[ISOPT.VariableKey{PSI.FlowActivePowerVariable, PSY.MonitoredLine}("")]
-        data = PSI.jump_value.(src)
-        names, time_steps = axes(data)
-        key = ISOPT.AuxVarKey{SharedFlowActivePower, PSY.MonitoredLine}(index)
-        cont = container.aux_variables[key]
-        for n in names, t in time_steps
-            cont[n, t] = data[n, t]
-        end
-        =#
     end
     write_results_to_main_container(container)
     return status

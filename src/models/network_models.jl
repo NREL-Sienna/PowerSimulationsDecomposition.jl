@@ -278,39 +278,45 @@ function _update_parameter_values!(
     parameter_array::AbstractArray{T},
     attributes::PSI.VariableValueAttributes,
     model::PSI.DecisionModel{MultiRegionProblem},
-    state::PSI.DatasetContainer{PSI.InMemoryDataset},
+    simulation_state::PSI.SimulationState,
 ) where {T <: Union{JuMP.VariableRef, Float64}}
+    state = PSI.get_system_states(simulation_state)
     current_time = PSI.get_current_time(model)
     state_values = PSI.get_dataset_values(state, PSI.get_attribute_key(attributes))
+    if !isfinite(first(state_values))
+        @warn "first value not present"
+        state = PSI.get_decision_states(simulation_state)
+        state_values = PSI.get_dataset_values(state, PSI.get_attribute_key(attributes))
+    end
+
     component_names, time = axes(parameter_array)
     model_resolution = PSI.get_resolution(model)
     state_data = PSI.get_dataset(state, PSI.get_attribute_key(attributes))
     state_timestamps = state_data.timestamps
     max_state_index = PSI.get_num_rows(state_data)
-    if model_resolution < state_data.resolution
-        t_step = 1
-    else
-        t_step = model_resolution ÷ state_data.resolution
-    end
-    state_data_index = PSI.find_timestamp_index(state_timestamps, current_time)
+    #t_step = 1
+    #state_data_index = PSI.find_timestamp_index(state_timestamps, current_time)
     sim_timestamps = range(current_time; step=model_resolution, length=time[end])
-    for t in time
-        timestamp_ix = min(max_state_index, state_data_index + t_step)
-        @debug "parameter horizon is over the step" max_state_index > state_data_index + 1
-        if state_timestamps[timestamp_ix] <= sim_timestamps[t]
-            state_data_index = timestamp_ix
-        end
+    for state_data_index in [1]
+        #timestamp_ix = min(max_state_index, state_data_index + t_step)
+        #@debug "parameter horizon is over the step" max_state_index > state_data_index + 1
+        #if state_timestamps[timestamp_ix] <= sim_timestamps[t]
+        #    state_data_index = timestamp_ix
+        #end
         for name_ix in component_names
             # Pass indices in this way since JuMP DenseAxisArray don't support view()
             state_value = state_values[name_ix, state_data_index]
+            if name_ix == "10313"
+                @error "update pm" state_value PSI.get_attribute_key(attributes) current_time
+            end
             if !isfinite(state_value)
                 error(
-                    "The value for the system state used in $(encode_key_as_string(get_attribute_key(attributes))) is not a finite value $(state_value) \
+                    "The value for the system state used in $(PSI.encode_key_as_string(PSI.get_attribute_key(attributes))) is not a finite value $(state_value) \
                      This is commonly caused by referencing a state value at a time when such decision hasn't been made. \
                      Consider reviewing your models' horizon and interval definitions",
                 )
             end
-            PSI._set_param_value!(parameter_array, state_value, name_ix, t)
+            PSI._set_param_value!(parameter_array, state_value, name_ix, 1)
         end
     end
     return
@@ -334,6 +340,7 @@ function PSI.add_to_expression!(
         area_to_name = PSY.get_name(PSY.get_to_area(d))
         for t in PSI.get_time_steps(container)
             if area_from_name ∈ area_names
+                @debug "added area: $area_from_name to \"from\" in subsystem: $subsys"
                 PSI._add_to_jump_expression!(
                     expression[area_from_name, t],
                     flow_variable[PSY.get_name(d), t],
@@ -341,6 +348,7 @@ function PSI.add_to_expression!(
                 )
             end
             if area_to_name ∈ area_names
+                @debug "added area: $area_to_name to \"to\" in subsystem: $subsys"
                 PSI._add_to_jump_expression!(
                     expression[area_to_name, t],
                     flow_variable[PSY.get_name(d), t],
@@ -359,7 +367,7 @@ function PSI.update_container_parameter_values!(
     optimization_container::PSI.OptimizationContainer,
     model::PSI.DecisionModel{MultiRegionProblem},
     key::PSI.ParameterKey{StateEstimationInjections, PSY.ACBus},
-    input::PSI.DatasetContainer{PSI.InMemoryDataset},
+    simulation_state::PSI.SimulationState,
 )
     # Enable again for detailed debugging
     # TimerOutputs.@timeit RUN_SIMULATION_TIMER "$T $U Parameter Update" begin
@@ -367,6 +375,11 @@ function PSI.update_container_parameter_values!(
     # if the keys have strings in the meta fields
     parameter_array = PSI.get_parameter_array(optimization_container, key)
     parameter_attributes = PSI.get_parameter_attributes(optimization_container, key)
-    _update_parameter_values!(parameter_array, parameter_attributes, model, input)
+    _update_parameter_values!(
+        parameter_array,
+        parameter_attributes,
+        model,
+        simulation_state,
+    )
     return
 end
