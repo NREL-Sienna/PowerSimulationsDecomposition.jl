@@ -283,6 +283,7 @@ function _update_parameter_values!(
     state = PSI.get_system_states(simulation_state)
     current_time = PSI.get_current_time(model)
     state_values = PSI.get_dataset_values(state, PSI.get_attribute_key(attributes))
+
     if !isfinite(first(state_values))
         @warn "first value not present"
         state = PSI.get_decision_states(simulation_state)
@@ -297,15 +298,19 @@ function _update_parameter_values!(
     #t_step = 1
     #state_data_index = PSI.find_timestamp_index(state_timestamps, current_time)
     sim_timestamps = range(current_time; step=model_resolution, length=time[end])
-    for state_data_index in [1]
+
+    #ychen vertical
+    #for state_data_index in [1]
+    for state_data_index in 1:length(axes(parameter_array)[2])
         #timestamp_ix = min(max_state_index, state_data_index + t_step)
         #@debug "parameter horizon is over the step" max_state_index > state_data_index + 1
         #if state_timestamps[timestamp_ix] <= sim_timestamps[t]
         #    state_data_index = timestamp_ix
         #end
+        #println("******** state_data_index,",state_data_index)
         for name_ix in component_names
             # Pass indices in this way since JuMP DenseAxisArray don't support view()
-            state_value = state_values[name_ix, state_data_index]
+            state_value = state_values[name_ix, state_data_index]  
             if name_ix == "10313"
                 @error "update pm" state_value PSI.get_attribute_key(attributes) current_time
             end
@@ -316,7 +321,9 @@ function _update_parameter_values!(
                      Consider reviewing your models' horizon and interval definitions",
                 )
             end
-            PSI._set_param_value!(parameter_array, state_value, name_ix, 1)
+            #ychen vertical
+            #PSI._set_param_value!(parameter_array, state_value, name_ix, 1)
+            PSI._set_param_value!(parameter_array, state_value, name_ix, state_data_index)
         end
     end
     return
@@ -375,6 +382,7 @@ function PSI.update_container_parameter_values!(
     # if the keys have strings in the meta fields
     parameter_array = PSI.get_parameter_array(optimization_container, key)
     parameter_attributes = PSI.get_parameter_attributes(optimization_container, key)
+    #println("** tmp, disable update")
     _update_parameter_values!(
         parameter_array,
         parameter_attributes,
