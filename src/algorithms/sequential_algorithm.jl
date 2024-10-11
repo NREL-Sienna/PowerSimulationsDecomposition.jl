@@ -19,7 +19,8 @@ function build_main_problem!(
     container::MultiOptimizationContainer{SequentialAlgorithm},
     template::MultiProblemTemplate,
     sys::PSY.System,
-) end
+)
+end
 
 # The drawback of this approach is that it will loop over the results twice
 # once to write into the main container and a second time when writing into the
@@ -28,35 +29,41 @@ function build_main_problem!(
 function write_results_to_main_container(container::MultiOptimizationContainer)
     # TODO: This process needs to work in parallel almost right away
     # TODO: This doesn't handle the case where subproblems have an overlap in axis names.
-
-    for subproblem in values(container.subproblems)
+    for (k, subproblem) in container.subproblems
         for field in CONTAINER_FIELDS
             subproblem_data_field = getproperty(subproblem, field)
             main_container_data_field = getproperty(container, field)
             for (key, src) in subproblem_data_field
                 if src isa JuMP.Containers.SparseAxisArray
-                    # @warn "Skip SparseAxisArray" field key
+                    @debug "Skip SparseAxisArray" field key
                     continue
                 end
                 num_dims = ndims(src)
                 num_dims > 2 && error("ndims = $(num_dims) is not supported yet")
                 data = nothing
-                try
-                    data = PSI.jump_value.(src)
-                catch e
-                    if e isa UndefRefError
-                        #@warn "Skip UndefRefError for" field key
-                        continue
-                    end
-                    rethrow()
-                end
+                data = PSI.jump_value.(src)
                 dst = main_container_data_field[key]
                 if num_dims == 1
                     dst[1:length(axes(src)[1])] = data
                 elseif num_dims == 2
-                    columns = axes(src)[1]
-                    len = length(axes(src)[2])
+#ychen fix horizontal passing ACbusinjection issue
+                    if field==:expressions
+                        field1= :parameters
+                        subproblem_data_field1 = getproperty(subproblem, field1)
+                        src1=subproblem_data_field1[InfrastructureSystems.Optimization.ParameterKey{PowerSimulationsDecomposition.StateEstimationInjections, PSY.ACBus}("")]
+                        B=parse.(Int,axes(src1.parameter_array)[1])
+                        A=axes(src)[1]
+                        C=filter(x -> !(x in B), A)
+                        columns= C
+                    else
+                        columns = axes(src)[1]    
+                    end    
+#ychen end                    
+                    len = length(axes(src)[2])                    
                     dst[columns, 1:len] = PSI.jump_value.(src[:, :])
+                    #try 
+                    #   println("======111  dst,k,",dst[203, :],",subproblem,",k)
+                    #catch e end   
                 elseif num_dims == 3
                     # TODO: untested
                     axis1 = axes(src)[1]
@@ -82,9 +89,13 @@ function _write_parameter_results_to_main_container(
         src_mult_data = PSI.jump_value.(parameter_container.multiplier_array)
         dst_param_data = container.parameters[key].parameter_array
         dst_mult_data = container.parameters[key].multiplier_array
+        #println("*****11,subproblem,",subproblem)
+        #println("*****12,key,",key)
+        #println("*****13,num_dims,",num_dims)
         if num_dims == 1
             dst_param_data[1:length(axes(src_param_data)[1])] = src_param_data
             dst_mult_data[1:length(axes(src_mult_data)[1])] = src_mult_data
+
         elseif num_dims == 2
             param_columns = axes(src_param_data)[1]
             mult_columns = axes(src_mult_data)[1]
@@ -103,10 +114,14 @@ function solve_impl!(
     sys::PSY.System,
 )
     # Solve main problem
-    status = PSI.RunStatus.SUCCESSFUL
+    status = ISSIM.RunStatus.RUNNING
     for (index, subproblem) in container.subproblems
-        @info "Solving problem $index"
+        @debug "Solving problem $index"
         status = PSI.solve_impl!(subproblem, sys)
+        println("yc -- solving problem,",index)
+        if status != ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
+            return status
+        end
     end
     write_results_to_main_container(container)
     return status

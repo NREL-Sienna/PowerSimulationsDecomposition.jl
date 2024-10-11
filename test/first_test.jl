@@ -30,7 +30,7 @@ const PSB = PowerSystemCaseBuilder
 # consider the use of custom system used for GDO case
 name_ = "AC_inter"
 sys_twin_rts_DA =
-    PSY.System("GDO systems/saved_main_RTS_GMLC_DA_final_sys_" * name_ * ".json")   # day ahead 
+    PSY.System("GDO systems/saved_main_RTS_GMLC_DA_final_sys_" * name_ * ".json")   # day ahead
 
 # ! check reserves
 
@@ -68,7 +68,7 @@ end
 
 # define battery model
 storage_model = DeviceModel(
-    GenericBattery,
+    EnergyReservoirStorage,
     StorageDispatchWithReserves;
     attributes=Dict(
         "reservation" => false,
