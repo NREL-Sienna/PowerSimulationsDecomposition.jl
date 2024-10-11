@@ -1,9 +1,9 @@
 using Pkg
-Pkg.activate(".")
+Pkg.activate(@__DIR__)
 using Revise
 
-ENV["XPRESSDIR"] = "C:\\xpressmp"
-ENV["XPAUTH_PATH"] = "C:\\xpressmp\\bin"
+#ENV["XPRESSDIR"] = "C:\\xpressmp"
+#ENV["XPAUTH_PATH"] = "C:\\xpressmp\\bin"
 
 using HydroPowerSimulations
 using PowerSimulations
@@ -14,7 +14,8 @@ using PowerSimulationsDecomposition
 using PowerSystems
 # using PowerGraphics
 
-using Xpress
+#using Xpress
+using HiGHS
 using JuMP
 using Logging
 using Dates
@@ -144,9 +145,10 @@ models = SimulationModels(;
             sys;
             name="UC0",
             optimizer=optimizer_with_attributes(
-                Xpress.Optimizer,
-                "MIPRELSTOP" => 0.00, # Set the relative mip gap tolerance
-                "MAXMEMORYSOFT" => 600000,   # Set the maximum amount of memory the solver can use (in MB)
+                HiGHS.Optimizer,
+                #Xpress.Optimizer,
+                #"MIPRELSTOP" => 0.00, # Set the relative mip gap tolerance
+                #"MAXMEMORYSOFT" => 600000,   # Set the maximum amount of memory the solver can use (in MB)
             ),
             system_to_file=false,
             optimizer_solve_log_print=false,
@@ -160,8 +162,9 @@ models = SimulationModels(;
             sys2;
             name="UC_Subsystem",
             optimizer=optimizer_with_attributes(
-                Xpress.Optimizer,
-                "MIPRELSTOP" => 0.00,       # Set the relative mip gap tolerance
+                HiGHS.Optimizer,
+                #Xpress.Optimizer,
+                #"MIPRELSTOP" => 0.00,       # Set the relative mip gap tolerance
                 #"MAXMEMORYSOFT" => 600000,   # Set the maximum amount of memory the solver can use (in MB)
             ),
             system_to_file=false,
