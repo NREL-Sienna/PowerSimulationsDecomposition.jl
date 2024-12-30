@@ -260,34 +260,7 @@ end
 
 # EI
 #=
-using EasternInterconnection
-const EI = EasternInterconnection
-case_name = "EI_2031_PCM"
-weather_year = 2009
-load_year = 2035
-EIPC_data = true
-add_forecasts = false
-add_reserves = true
-skip_serialization = false
-
-@time sys = EI.build_system(
-                EI.EISystems,
-                case_name;
-                weather_year = weather_year,
-                load_year = load_year,
-                EIPC_data = EIPC_data,
-                add_forecasts = add_forecasts,
-                add_reserves = add_reserves,
-                skip_serialization = skip_serialization,
-                force_build = false,
-                runchecks = false,
-            )
-
-ln="RICHLAND-BE7_659151_LEWIS  7_661056~1"
-limit=10.0 
-NT=24
-EI.change_areas_to_regions!(sys)
-standardload=1
+include("EI_model.jl")
 =#
 
 #RTS
