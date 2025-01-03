@@ -13,7 +13,7 @@ function PSI.DecisionModel{MultiRegionProblem}(
             SequentialAlgorithm,
             sys,
             settings,
-            PSY.Deterministic,
+            PSI.get_deterministic_time_series_type(sys),
             get_sub_problem_keys(template),
         ),
     )
