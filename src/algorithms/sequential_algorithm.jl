@@ -19,8 +19,7 @@ function build_main_problem!(
     container::MultiOptimizationContainer{SequentialAlgorithm},
     template::MultiProblemTemplate,
     sys::PSY.System,
-)
-end
+) end
 
 # The drawback of this approach is that it will loop over the results twice
 # once to write into the main container and a second time when writing into the
@@ -46,20 +45,26 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
                 if num_dims == 1
                     dst[1:length(axes(src)[1])] = data
                 elseif num_dims == 2
-#ychen fix horizontal passing ACbusinjection issue
-                    if field==:expressions
-                        field1= :parameters
+                    #ychen fix horizontal passing ACbusinjection issue
+                    if field == :expressions
+                        field1 = :parameters
                         subproblem_data_field1 = getproperty(subproblem, field1)
-                        src1=subproblem_data_field1[InfrastructureSystems.Optimization.ParameterKey{PowerSimulationsDecomposition.StateEstimationInjections, PSY.ACBus}("")]
-                        B=parse.(Int,axes(src1.parameter_array)[1])
-                        A=axes(src)[1]
-                        C=filter(x -> !(x in B), A)
-                        columns= C
+                        src1 =
+                            subproblem_data_field1[InfrastructureSystems.Optimization.ParameterKey{
+                                PowerSimulationsDecomposition.StateEstimationInjections,
+                                PSY.ACBus,
+                            }(
+                                "",
+                            )]
+                        B = parse.(Int, axes(src1.parameter_array)[1])
+                        A = axes(src)[1]
+                        C = filter(x -> !(x in B), A)
+                        columns = C
                     else
-                        columns = axes(src)[1]    
-                    end    
-#ychen end                    
-                    len = length(axes(src)[2])                    
+                        columns = axes(src)[1]
+                    end
+                    #ychen end                    
+                    len = length(axes(src)[2])
                     dst[columns, 1:len] = PSI.jump_value.(src[:, :])
                     #try 
                     #   println("======111  dst,k,",dst[203, :],",subproblem,",k)
@@ -118,7 +123,7 @@ function solve_impl!(
     for (index, subproblem) in container.subproblems
         @debug "Solving problem $index"
         status = PSI.solve_impl!(subproblem, sys)
-        println("yc -- solving problem,",index)
+        println("yc -- solving problem,", index)
         if status != ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
             return status
         end
