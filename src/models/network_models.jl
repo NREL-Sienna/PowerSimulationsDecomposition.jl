@@ -401,8 +401,8 @@ function PSI.update_container_parameter_values!(
     PSI.update_container_parameter_values!(
         optimization_container,
         model,
-        key.parameter_key,
-        PSI.get_decision_states(simulation_state)
+        key,
+        PSI.get_decision_states(simulation_state),
     )
     return
 end
