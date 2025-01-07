@@ -391,3 +391,18 @@ function PSI.update_container_parameter_values!(
     )
     return
 end
+
+function PSI.update_container_parameter_values!(
+    optimization_container::PSI.OptimizationContainer,
+    model::PSI.DecisionModel{MultiRegionProblem},
+    key::PSI.OptimizationContainerKey,
+    simulation_state::PSI.SimulationState,
+)
+    PSI.update_container_parameter_values!(
+        optimization_container,
+        model,
+        key.parameter_key,
+        PSI.get_decision_states(simulation_state)
+    )
+    return
+end
