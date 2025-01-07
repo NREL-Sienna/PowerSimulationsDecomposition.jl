@@ -370,7 +370,7 @@ end
 """
 Update parameter function an OperationModel
 """
-function update_container_parameter_values!(
+function PSI.update_container_parameter_values!(
     optimization_container::PSI.OptimizationContainer,
     model::PSI.DecisionModel{MultiRegionProblem},
     key::PSI.ParameterKey{StateEstimationInjections, PSY.ACBus},
@@ -389,25 +389,5 @@ function update_container_parameter_values!(
         model,
         simulation_state,
     )
-    return
-end
-
-function PSI.update_parameter_values!(
-    model::PSI.DecisionModel{MultiRegionProblem},
-    key::PSI.ParameterKey{StateEstimationInjections, PSY.ACBus},
-    simulation_state::PSI.SimulationState,
-) where {T <: PSI.ParameterType, U <: PSY.Component}
-    # Enable again for detailed debugging
-    # TimerOutputs.@timeit RUN_SIMULATION_TIMER "$T $U Parameter Update" begin
-    optimization_container = PSI.get_optimization_container(model)
-    update_container_parameter_values!(optimization_container, model, key, simulation_state)
-    IS.@record :execution PSI.ParameterUpdateEvent(
-        T,
-        U,
-        "state update event", # TODO: Implement correct update recorder event
-        PSI.get_current_timestamp(model),
-        PSI.get_name(model),
-    )
-    #end
     return
 end

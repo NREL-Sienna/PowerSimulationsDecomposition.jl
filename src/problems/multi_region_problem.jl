@@ -388,7 +388,7 @@ function PSI.update_parameters!(
         @debug "Updating subproblem $ix"
         PSI.cost_function_unsynch(subproblem)
         for key in keys(PSI.get_parameters(subproblem))
-            PSI.update_parameter_values!(subproblem, key, simulation_state)
+            PSI.update_container_parameter_values!(subproblem, model, key, simulation_state)
         end
     end
 
