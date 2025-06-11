@@ -22,7 +22,6 @@ function build_main_problem!(
 )
     for k in keys(container.subproblems)
         subsystem_buses = PSY.get_components(
-            x -> PSY.get_bustype(x) != PSY.ACBusTypes.ISOLATED,
             PSY.ACBus,
             sys;
             subsystem_name=k,
