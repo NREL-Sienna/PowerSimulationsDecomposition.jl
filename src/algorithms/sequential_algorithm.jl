@@ -20,13 +20,35 @@ function build_main_problem!(
     template::MultiProblemTemplate,
     sys::PSY.System,
 )
+    branch_models_dict = keys(PSI.get_branch_models(template))
+    if :TwoTerminalHVDCLine ∈ branch_models_dict ||
+       :TwoTerminalHVDCLine ∈ branch_models_dict
+        has_hvdc = true
+    else
+        has_hvdc = false
+    end
     for k in keys(container.subproblems)
-        subsystem_buses = PSY.get_components(
-            PSY.ACBus,
+        subsystem_buses = PSY.get_components(PSY.ACBus, sys; subsystem_name=k)
+        subsystem_bus_nos = [PSY.get_number(b) for b in subsystem_buses]
+        container.subproblem_bus_map[k] = subsystem_bus_nos
+        subsystem_hvdcs = PSY.get_components(
+            Union{PSY.TwoTerminalHVDCLine, PSY.TwoTerminalVSCDCLine},
             sys;
             subsystem_name=k,
         )
-        container.subproblem_bus_map[k] = [PSY.get_number(b) for b in subsystem_buses]
+        if has_hvdc
+            for hvdc in subsystem_hvdcs
+                from_bus_no = PSY.get_number(PSY.get_from(PSY.get_arc(hvdc)))
+                to_bus_no = PSY.get_number(PSY.get_to(PSY.get_arc(hvdc)))
+                if (from_bus_no ∉ subsystem_bus_nos) || (to_bus_no ∉ subsystem_bus_nos)
+                    throw(
+                        IS.ConflictingInputsError(
+                            "The terminal buses of HVDC must belong to the same subsystem. Check subsystem assignments for HVDC $(PSY.get_name(hvdc)) belonging to subsystem $k",
+                        ),
+                    )
+                end
+            end
+        end
     end
 end
 
