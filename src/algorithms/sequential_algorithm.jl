@@ -76,16 +76,7 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
                 if num_dims == 1
                     dst[1:length(axes(src)[1])] = data
                 elseif num_dims == 2
-                    if key == InfrastructureSystems.Optimization.ExpressionKey{
-                        PSI.ActivePowerBalance,
-                        PSY.ACBus,
-                    }(
-                        "",
-                    )
-                        columns = container.subproblem_bus_map[k]
-                    else
-                        columns = axes(src)[1]
-                    end
+                    columns = _get_main_container_columns(container, k, key, src)
                     len = length(axes(src)[2])
                     dst[columns, 1:len] = PSI.jump_value.(src[columns, :])
                 elseif num_dims == 3
@@ -100,6 +91,24 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
         _write_parameter_results_to_main_container(container, subproblem)
     end
     return
+end
+
+function _get_main_container_columns(
+    container::MultiOptimizationContainer,
+    subproblem_key::String,
+    key::PSI.OptimizationContainerKey,
+    values::PSI.DenseAxisArray,
+)
+    return axes(values)[1]
+end
+
+function _get_main_container_columns(
+    container::MultiOptimizationContainer,
+    subproblem_key::String,
+    key::PSI.ExpressionKey{PSI.ActivePowerBalance, PSY.ACBus},
+    values::PSI.DenseAxisArray,
+)
+    return container.subproblem_bus_map[subproblem_key]
 end
 
 function _write_parameter_results_to_main_container(
