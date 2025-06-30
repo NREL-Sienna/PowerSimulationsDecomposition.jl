@@ -13,11 +13,14 @@ using Dates
 using HiGHS
 using JuMP
 const IS = InfrastructureSystems
-include("utils.jl")
+const PSI = PowerSimulations
 
 # Test Packages
 using Test
 using Logging
+
+include(joinpath(@__DIR__, "test_utils", "system_modifications.jl"))
+include(joinpath(@__DIR__, "test_utils", "model_checks.jl"))
 
 import Aqua
 Aqua.test_unbound_args(PowerSimulationsDecomposition)
