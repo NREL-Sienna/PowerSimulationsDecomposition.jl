@@ -274,6 +274,7 @@ function PSI.add_variables!(
     return
 end
 
+# TODO - account for differing resolutions between model and state for first update
 function _update_parameter_values!(
     parameter_array::AbstractArray{T},
     attributes::PSI.VariableValueAttributes,
@@ -281,39 +282,25 @@ function _update_parameter_values!(
     simulation_state::PSI.SimulationState,
 ) where {T <: Union{JuMP.VariableRef, Float64}}
     state = PSI.get_system_states(simulation_state)
-    current_time = PSI.get_current_time(model)
     state_values = PSI.get_dataset_values(state, PSI.get_attribute_key(attributes))
 
     if !isfinite(first(state_values))
-        @warn "first value not present"
+        @warn "first value not present, updating state estimation injections from decision state"
         state = PSI.get_decision_states(simulation_state)
         state_values = PSI.get_dataset_values(state, PSI.get_attribute_key(attributes))
     end
 
-    component_names, time = axes(parameter_array)
-    model_resolution = PSI.get_resolution(model)
-    state_data = PSI.get_dataset(state, PSI.get_attribute_key(attributes))
-    state_timestamps = state_data.timestamps
-    max_state_index = PSI.get_num_rows(state_data)
-    #t_step = 1
-    #state_data_index = PSI.find_timestamp_index(state_timestamps, current_time)
-    sim_timestamps = range(current_time; step=model_resolution, length=time[end])
+    if size(parameter_array)[2] > size(state_values)[2]
+        error(
+            "Cannot update: state estimation injection parameter has more timesteps than the state used for updating.",
+        )
+    end
 
-    #ychen vertical
-    #for state_data_index in [1]
-    for state_data_index in 1:length(axes(parameter_array)[2])
-        #timestamp_ix = min(max_state_index, state_data_index + t_step)
-        #@debug "parameter horizon is over the step" max_state_index > state_data_index + 1
-        #if state_timestamps[timestamp_ix] <= sim_timestamps[t]
-        #    state_data_index = timestamp_ix
-        #end
-        #println("******** state_data_index,",state_data_index)
-        for name_ix in component_names
+    component_names, time = axes(parameter_array)
+    for t in time
+        for name in component_names
             # Pass indices in this way since JuMP DenseAxisArray don't support view()
-            state_value = state_values[name_ix, state_data_index]
-            if name_ix == "10313"
-                @error "update pm" state_value PSI.get_attribute_key(attributes) current_time
-            end
+            state_value = state_values[name, t]
             if !isfinite(state_value)
                 error(
                     "The value for the system state used in $(PSI.encode_key_as_string(PSI.get_attribute_key(attributes))) is not a finite value $(state_value) \
@@ -321,9 +308,7 @@ function _update_parameter_values!(
                      Consider reviewing your models' horizon and interval definitions",
                 )
             end
-            #ychen vertical
-            #PSI._set_param_value!(parameter_array, state_value, name_ix, 1)
-            PSI._set_param_value!(parameter_array, state_value, name_ix, state_data_index)
+            PSI._set_param_value!(parameter_array, state_value, name, t)
         end
     end
     return
@@ -382,7 +367,6 @@ function PSI.update_container_parameter_values!(
     # if the keys have strings in the meta fields
     parameter_array = PSI.get_parameter_array(optimization_container, key)
     parameter_attributes = PSI.get_parameter_attributes(optimization_container, key)
-    #println("** tmp, disable update")
     _update_parameter_values!(
         parameter_array,
         parameter_attributes,

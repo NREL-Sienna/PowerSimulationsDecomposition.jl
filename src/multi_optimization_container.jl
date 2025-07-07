@@ -2,6 +2,7 @@ Base.@kwdef mutable struct MultiOptimizationContainer{T <: DecompositionAlgorith
                            ISOPT.AbstractOptimizationContainer
     main_problem::PSI.OptimizationContainer
     subproblems::Dict{String, PSI.OptimizationContainer}
+    subproblem_bus_map::Dict{String, Vector{Int}}
     time_steps::UnitRange{Int}
     resolution::Dates.TimePeriod
     settings::PSI.Settings
@@ -49,10 +50,12 @@ function MultiOptimizationContainer(
     subproblems = Dict(
         k => PSI.OptimizationContainer(sys, settings, nothing, U) for k in subproblem_keys
     )
+    subproblem_bus_map = Dict{String, Vector{Int}}()
 
     return MultiOptimizationContainer{T}(;
         main_problem=PSI.OptimizationContainer(sys, settings, nothing, U),
         subproblems=subproblems,
+        subproblem_bus_map=subproblem_bus_map,
         time_steps=1:1,
         resolution=IS.time_period_conversion(resolution),
         settings=settings,
