@@ -142,11 +142,16 @@ end
 # NOTE - open issue for results processing (this is only testing a single value at t=0): https://github.com/NREL-Sienna/PowerSimulations.jl/issues/1307
 # We can manually go in and grab the results from the container to test all 5 values: 
 param = sim.models.decision_models[2].internal.container.parameters
-keys_param = collect(keys(param))
-state_estimation_injection = param[keys_param[2]].parameter_array
+state_estimation_injection =
+    param[InfrastructureSystems.Optimization.ParameterKey{
+        PowerSimulationsDecomposition.StateEstimationInjections,
+        ACBus,
+    }(
+        "",
+    )].parameter_array
 expr = sim.models.decision_models[1].internal.container.expressions
-keys_expr = collect(keys(expr))
-active_power_balance = expr[keys_expr[7]]
+active_power_balance =
+    expr[InfrastructureSystems.Optimization.ExpressionKey{ActivePowerBalance, ACBus}("")]
 for b_number in [get_number(x) for x in get_components(ACBus, sys)]
     apb = value.(active_power_balance[b_number, :]).data
     sei = state_estimation_injection[string(b_number), :].data
