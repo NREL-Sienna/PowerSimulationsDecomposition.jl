@@ -21,6 +21,7 @@ using Logging
 
 include(joinpath(@__DIR__, "test_utils", "system_modifications.jl"))
 include(joinpath(@__DIR__, "test_utils", "model_checks.jl"))
+include(joinpath(@__DIR__, "test_utils", "simulation_runs.jl"))
 
 import Aqua
 Aqua.test_unbound_args(PowerSimulationsDecomposition)
