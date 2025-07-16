@@ -20,6 +20,11 @@
             read_realized_variable(results_ucsub, "StateEstimationInjections__ACBus")[!, b]
         @test isapprox(apb, sei)
     end
+    # Test values to ensure implementation changes aren't causing unexpected changes in results
+    @test read_realized_variable(results_uc0, "ActivePowerBalance__ACBus")[1, "116"] ==
+          -0.3456209797192982
+    @test read_realized_variable(results_uc0, "ActivePowerBalance__ACBus")[1, "119"] ==
+          -0.6255739732919298
 
     # NOTE - open issue for results processing (this is only testing a single value at t=0): https://github.com/NREL-Sienna/PowerSimulations.jl/issues/1307
     # We can manually go in and grab the results from the container to test all 5 values: 

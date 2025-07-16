@@ -19,4 +19,9 @@
         sei = read_realized_variable(results_rt, "StateEstimationInjections__ACBus")[!, b]
         @test isapprox(sei[2:end], apb[1:(end - 1)])
     end
+    # Test values to ensure implementation changes aren't causing unexpected changes in results
+    @test read_realized_variable(results_rt, "ActivePowerBalance__ACBus")[1, "116"] ==
+          -0.3456209797192982
+    @test read_realized_variable(results_rt, "ActivePowerBalance__ACBus")[1, "119"] ==
+          -0.6255739732919298
 end
