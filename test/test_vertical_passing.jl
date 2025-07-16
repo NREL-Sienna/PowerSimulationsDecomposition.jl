@@ -1,5 +1,8 @@
 @testset "Test vertical passing without emulator" begin
+    sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results, sim = run_rts_multi_stage_decomposition_simulation(
+        [sys, sys2];
         NT=5,
         mode="vertical",
         monitored_line_formulations=[StaticBranchUnbounded, StaticBranchUnbounded],

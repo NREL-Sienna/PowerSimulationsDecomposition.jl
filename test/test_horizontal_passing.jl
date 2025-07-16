@@ -1,6 +1,9 @@
 
 @testset "Test horizontal passing without emulator" begin
+    sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results, _ = run_rts_multi_stage_decomposition_simulation(
+        [sys, sys2];
         NT=5,
         mode="horizontal",
         monitored_line_formulations=[StaticBranchUnbounded, StaticBranchUnbounded],

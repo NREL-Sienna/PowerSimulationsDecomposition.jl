@@ -30,7 +30,7 @@ problem = DecisionModel(
     name="UC_Subsystem",
     optimizer=optimizer_with_attributes(HiGHS.Optimizer),
 )
-build_out = build!(problem; output_dir=mktempdir())
+build_out = build!(problem; console_level=Logging.AboveMaxLevel, output_dir=mktempdir())
 @test build_out == PowerSimulations.ModelBuildStatus.FAILED
 
 # HVDC spans subsystems and is modeled but both terminal buses belong to same subsytem (build suceeds)
