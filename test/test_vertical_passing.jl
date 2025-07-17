@@ -47,3 +47,61 @@
         @test isapprox(apb, sei)
     end
 end
+
+@testset "Vertical passing; compare branch models without emulator" begin
+    sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    results_original, sim_original = run_rts_multi_stage_decomposition_simulation(
+        [sys, sys2];
+        NT=5,
+        mode="vertical",
+        monitored_line_formulations=[StaticBranchUnbounded, StaticBranchUnbounded],
+        use_emulator=false,
+    )
+    sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    results_se_line, sim_se_line = run_rts_multi_stage_decomposition_simulation(
+        [sys, sys2];
+        NT=5,
+        mode="vertical",
+        monitored_line_formulations=[
+            StaticBranchUnbounded,
+            StaticBranchUnboundedStateEstimation,
+        ],
+        use_emulator=false,
+    )
+    results_sub_original = get_decision_problem_results(results_original, "UC_Subsystem")
+    results_sub_se_line = get_decision_problem_results(results_se_line, "UC_Subsystem")
+    flow_sub_original = read_realized_variable(
+        results_sub_original,
+        "FlowActivePowerVariable__MonitoredLine",
+    )
+    flow_sub_se_line = read_realized_variable(
+        results_sub_se_line,
+        "FlowActivePowerVariable__MonitoredLine",
+    )
+
+    @test isapprox(flow_sub_original[1, "A28"], flow_sub_se_line[1, "A28"])
+
+    # NOTE - open issue for results processing (this is only testing a single value at t=0): https://github.com/NREL-Sienna/PowerSimulations.jl/issues/1307
+    # We can manually go in and grab the results from the container to test all 5 values: 
+    vars_original = sim_original.models.decision_models[2].internal.container.variables
+    flows_original = Vector(
+        vars_original[PowerSimulations.VariableKey{FlowActivePowerVariable, MonitoredLine}(
+            "",
+        )][
+            "A28",
+            :,
+        ],
+    )
+    vars_se_line = sim_se_line.models.decision_models[2].internal.container.variables
+    flows_se_line = Vector(
+        vars_se_line[PowerSimulations.VariableKey{FlowActivePowerVariable, MonitoredLine}(
+            "",
+        )][
+            "A28",
+            :,
+        ],
+    )
+    @test isapprox(flows_original, flows_se_line)
+end

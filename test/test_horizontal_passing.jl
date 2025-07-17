@@ -25,3 +25,40 @@
     @test read_realized_variable(results_rt, "ActivePowerBalance__ACBus")[1, "119"] ==
           -0.6255739732919298
 end
+
+@testset "Horizontal passing; compare branch models without emulator" begin
+    sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    results_original, _ = run_rts_multi_stage_decomposition_simulation(
+        [sys, sys2];
+        NT=5,
+        mode="horizontal",
+        monitored_line_formulations=[StaticBranchUnbounded, StaticBranchUnbounded],
+        use_emulator=false,
+    )
+    sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    results_se_line, _ = run_rts_multi_stage_decomposition_simulation(
+        [sys, sys2];
+        NT=5,
+        mode="horizontal",
+        monitored_line_formulations=[
+            StaticBranchUnbounded,
+            StaticBranchUnboundedStateEstimation,
+        ],
+        use_emulator=false,
+    )
+    results_sub_original = get_decision_problem_results(results_original, "UC_Subsystem")
+    results_sub_se_line = get_decision_problem_results(results_se_line, "UC_Subsystem")
+    flow_sub_original = read_realized_variable(
+        results_sub_original,
+        "FlowActivePowerVariable__MonitoredLine",
+    )
+    flow_sub_se_line = read_realized_variable(
+        results_sub_se_line,
+        "FlowActivePowerVariable__MonitoredLine",
+    )
+
+    # WITHOUT the emulator, we expect some difference in the flows outside of the first timestep:
+    @test isapprox(flow_sub_original[1, "A28"], flow_sub_se_line[1, "A28"])
+end
