@@ -61,4 +61,49 @@ end
 
     # WITHOUT the emulator, we expect some difference in the flows outside of the first timestep:
     @test isapprox(flow_sub_original[1, "A28"], flow_sub_se_line[1, "A28"])
+    @test !isapprox(flow_sub_original[2:end, "A28"], flow_sub_se_line[2:end, "A28"])
+end
+
+@testset "Horizontal passing; compare branch models with emulator" begin
+    sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    sys3 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    results_original, _ = run_rts_multi_stage_decomposition_simulation(
+        [sys, sys2, sys3];
+        NT=5,
+        mode="horizontal",
+        monitored_line_formulations=[
+            StaticBranchUnbounded,
+            StaticBranchUnbounded,
+            StaticBranchUnbounded,
+        ],
+        use_emulator=true,
+    )
+    sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    sys3 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
+    results_se_line, _ = run_rts_multi_stage_decomposition_simulation(
+        [sys, sys2, sys3];
+        NT=5,
+        mode="horizontal",
+        monitored_line_formulations=[
+            StaticBranchUnbounded,
+            StaticBranchUnboundedStateEstimation,
+            StaticBranchUnbounded,
+        ],
+        use_emulator=true,
+    )
+    results_sub_original = get_decision_problem_results(results_original, "UC_Subsystem")
+    results_sub_se_line = get_decision_problem_results(results_se_line, "UC_Subsystem")
+    flow_sub_original = read_realized_variable(
+        results_sub_original,
+        "FlowActivePowerVariable__MonitoredLine",
+    )
+    flow_sub_se_line = read_realized_variable(
+        results_sub_se_line,
+        "FlowActivePowerVariable__MonitoredLine",
+    )
+
+    # WITH the emulator, we expect the formulations to be equivalent:
+    @test isapprox(flow_sub_original[:, "A28"], flow_sub_se_line[:, "A28"])
 end
