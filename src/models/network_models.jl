@@ -136,9 +136,7 @@ function PSI.add_parameters!(
         sys;
     )
 
-    # These are the buses not in the same subsystem as the one being built
-    bus_numbers =
-        [string(PSY.get_number(b)) for b in all_buses if !PSY.has_component(sys, subsys, b)]
+    bus_numbers = [string(PSY.get_number(b)) for b in all_buses]
     @assert !isempty(bus_numbers)
 
     parameter_container = PSI.add_param_container!(

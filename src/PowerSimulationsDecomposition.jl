@@ -4,6 +4,8 @@ export MultiRegionProblem
 export MultiProblemTemplate
 
 export SplitAreaPTDFPowerModel
+export StaticBranchUnboundedStateEstimation
+export NetworkFlowConstraintStateEstimation
 
 import PowerSimulations
 import PowerNetworkMatrices
@@ -37,6 +39,7 @@ include("core/formulations.jl")
 include("core/mpi_info.jl")
 include("core/parameters.jl")
 include("core/auxiliary_variables.jl")
+include("core/constraints.jl")
 
 include("multiproblem_template.jl")
 include("multi_optimization_container.jl")
@@ -44,6 +47,7 @@ include("algorithms/sequential_algorithm.jl")
 include("algorithms/mpi_parallel_algorithm.jl")
 include("problems/multi_region_problem.jl")
 include("models/network_models.jl")
+include("models/branch_models.jl")
 include("print.jl")
 
 end

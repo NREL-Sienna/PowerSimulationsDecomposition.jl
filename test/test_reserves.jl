@@ -34,8 +34,8 @@ end
     build_out = build!(problem; output_dir=mktempdir())
     @test build_out == PowerSimulations.ModelBuildStatus.BUILT
     jump_problem_dict = get_jump_models(problem)
-    moi_tests(jump_problem_dict["a"], 9282, 0, 1728, 864, 2640, true)
-    moi_tests(jump_problem_dict["b"], 15012, 0, 3456, 1728, 5280, true)
+    moi_tests(jump_problem_dict["a"], 10434, 0, 1728, 864, 2640, true)
+    moi_tests(jump_problem_dict["b"], 17364, 0, 3456, 1728, 5280, true)
 end
 
 @testset "MOI test - reserves in A" begin
@@ -66,8 +66,8 @@ end
     build_out = build!(problem; output_dir=mktempdir())
     @test build_out == PowerSimulations.ModelBuildStatus.BUILT
     jump_problem_dict = get_jump_models(problem)
-    moi_tests(jump_problem_dict["a"], 10098, 0, 1728, 912, 2640, true)
-    moi_tests(jump_problem_dict["b"], 15012, 0, 3456, 1728, 5280, true)
+    moi_tests(jump_problem_dict["a"], 11250, 0, 1728, 912, 2640, true)
+    moi_tests(jump_problem_dict["b"], 17364, 0, 3456, 1728, 5280, true)
 end
 
 @testset "MOI test - reserves in B" begin
@@ -98,6 +98,6 @@ end
     build_out = build!(problem; output_dir=mktempdir())
     @test build_out == PowerSimulations.ModelBuildStatus.BUILT
     jump_problem_dict = get_jump_models(problem)
-    moi_tests(jump_problem_dict["a"], 9282, 0, 1728, 864, 2640, true)
-    moi_tests(jump_problem_dict["b"], 15924, 0, 3456, 1776, 5280, true)
+    moi_tests(jump_problem_dict["a"], 10434, 0, 1728, 864, 2640, true)
+    moi_tests(jump_problem_dict["b"], 18276, 0, 3456, 1776, 5280, true)
 end
