@@ -21,8 +21,9 @@ function build_main_problem!(
     sys::PSY.System,
 )
     branch_models_dict = keys(PSI.get_branch_models(template))
+    device_models_dict = keys(PSI.get_device_models(template))
     if :TwoTerminalHVDCLine ∈ branch_models_dict ||
-       :TwoTerminalHVDCLine ∈ branch_models_dict
+       :TwoTerminalVSCDCLine ∈ branch_models_dict
         has_hvdc = true
     else
         has_hvdc = false
@@ -31,6 +32,20 @@ function build_main_problem!(
         subsystem_buses = PSY.get_components(PSY.ACBus, sys; subsystem_name=k)
         subsystem_bus_nos = [PSY.get_number(b) for b in subsystem_buses]
         container.subproblem_bus_map[k] = subsystem_bus_nos
+        subsystem_static_injectors =
+            PSY.get_components(PSY.StaticInjection, sys; subsystem_name=k)
+        subsystem_buses = PSY.get_components(PSY.ACBus, sys; subsystem_name=k)
+        for si in subsystem_static_injectors
+            if Symbol(typeof(si)) ∈ device_models_dict
+                if !(PSY.get_bus(si) ∈ subsystem_buses)
+                    throw(
+                        IS.ConflictingInputsError(
+                            "static injector $(PSY.get_name(si)) is in subsystem $k but the bus it is attached to is not. Check your data inputs.",
+                        ),
+                    )
+                end
+            end
+        end
         subsystem_hvdcs = PSY.get_components(
             Union{PSY.TwoTerminalHVDCLine, PSY.TwoTerminalVSCDCLine},
             sys;
