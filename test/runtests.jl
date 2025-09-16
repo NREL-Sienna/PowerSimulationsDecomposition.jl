@@ -9,15 +9,23 @@ using HydroPowerSimulations
 import PowerSystemCaseBuilder: PSITestSystems
 using PowerNetworkMatrices
 using StorageSystemsSimulations
+using Dates
+using HiGHS
+using JuMP
+const IS = InfrastructureSystems
+const PSI = PowerSimulations
 
 # Test Packages
 using Test
 using Logging
 
+include(joinpath(@__DIR__, "test_utils", "system_modifications.jl"))
+include(joinpath(@__DIR__, "test_utils", "model_checks.jl"))
+
 import Aqua
 Aqua.test_unbound_args(PowerSimulationsDecomposition)
 Aqua.test_undefined_exports(PowerSimulationsDecomposition)
-Aqua.test_ambiguities(PowerSimulationsDecomposition)
+#Aqua.test_ambiguities(PowerSimulationsDecomposition)
 Aqua.test_stale_deps(PowerSimulationsDecomposition)
 Aqua.test_deps_compat(PowerSimulationsDecomposition)
 

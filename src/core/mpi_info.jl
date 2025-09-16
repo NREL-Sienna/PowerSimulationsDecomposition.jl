@@ -1,8 +1,3 @@
-abstract type DecompositionAlgorithm end
-
-struct SequentialAlgorithm <: DecompositionAlgorithm end
-struct MPIParallelAlgorithm <: DecompositionAlgorithm end
-
 # Taken from https://github.com/ANL-CEEESA/UnitCommitment.jl/blob/dev/src/solution/methods/ProgressiveHedging/structs.jl
 struct MpiInfo
     comm::Any

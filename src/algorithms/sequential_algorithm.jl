@@ -19,7 +19,38 @@ function build_main_problem!(
     container::MultiOptimizationContainer{SequentialAlgorithm},
     template::MultiProblemTemplate,
     sys::PSY.System,
-) end
+)
+    branch_models_dict = keys(PSI.get_branch_models(template))
+    if :TwoTerminalHVDCLine ∈ branch_models_dict ||
+       :TwoTerminalHVDCLine ∈ branch_models_dict
+        has_hvdc = true
+    else
+        has_hvdc = false
+    end
+    for k in keys(container.subproblems)
+        subsystem_buses = PSY.get_components(PSY.ACBus, sys; subsystem_name=k)
+        subsystem_bus_nos = [PSY.get_number(b) for b in subsystem_buses]
+        container.subproblem_bus_map[k] = subsystem_bus_nos
+        subsystem_hvdcs = PSY.get_components(
+            Union{PSY.TwoTerminalHVDCLine, PSY.TwoTerminalVSCDCLine},
+            sys;
+            subsystem_name=k,
+        )
+        if has_hvdc
+            for hvdc in subsystem_hvdcs
+                from_bus_no = PSY.get_number(PSY.get_from(PSY.get_arc(hvdc)))
+                to_bus_no = PSY.get_number(PSY.get_to(PSY.get_arc(hvdc)))
+                if (from_bus_no ∉ subsystem_bus_nos) || (to_bus_no ∉ subsystem_bus_nos)
+                    throw(
+                        IS.ConflictingInputsError(
+                            "The terminal buses of HVDC must belong to the same subsystem. Check subsystem assignments for HVDC $(PSY.get_name(hvdc)) belonging to subsystem $k",
+                        ),
+                    )
+                end
+            end
+        end
+    end
+end
 
 # The drawback of this approach is that it will loop over the results twice
 # once to write into the main container and a second time when writing into the
@@ -28,35 +59,26 @@ function build_main_problem!(
 function write_results_to_main_container(container::MultiOptimizationContainer)
     # TODO: This process needs to work in parallel almost right away
     # TODO: This doesn't handle the case where subproblems have an overlap in axis names.
-
-    for subproblem in values(container.subproblems)
+    for (k, subproblem) in container.subproblems
         for field in CONTAINER_FIELDS
             subproblem_data_field = getproperty(subproblem, field)
             main_container_data_field = getproperty(container, field)
             for (key, src) in subproblem_data_field
                 if src isa JuMP.Containers.SparseAxisArray
-                    # @warn "Skip SparseAxisArray" field key
+                    @debug "Skip SparseAxisArray" field key
                     continue
                 end
                 num_dims = ndims(src)
                 num_dims > 2 && error("ndims = $(num_dims) is not supported yet")
                 data = nothing
-                try
-                    data = PSI.jump_value.(src)
-                catch e
-                    if e isa UndefRefError
-                        #@warn "Skip UndefRefError for" field key
-                        continue
-                    end
-                    rethrow()
-                end
+                data = PSI.jump_value.(src)
                 dst = main_container_data_field[key]
                 if num_dims == 1
                     dst[1:length(axes(src)[1])] = data
                 elseif num_dims == 2
-                    columns = axes(src)[1]
+                    columns = _get_main_container_columns(container, k, key, src)
                     len = length(axes(src)[2])
-                    dst[columns, 1:len] = PSI.jump_value.(src[:, :])
+                    dst[columns, 1:len] = PSI.jump_value.(src[columns, :])
                 elseif num_dims == 3
                     # TODO: untested
                     axis1 = axes(src)[1]
@@ -69,6 +91,24 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
         _write_parameter_results_to_main_container(container, subproblem)
     end
     return
+end
+
+function _get_main_container_columns(
+    container::MultiOptimizationContainer,
+    subproblem_key::String,
+    key::PSI.OptimizationContainerKey,
+    values::PSI.DenseAxisArray,
+)
+    return axes(values)[1]
+end
+
+function _get_main_container_columns(
+    container::MultiOptimizationContainer,
+    subproblem_key::String,
+    key::PSI.ExpressionKey{PSI.ActivePowerBalance, PSY.ACBus},
+    values::PSI.DenseAxisArray,
+)
+    return container.subproblem_bus_map[subproblem_key]
 end
 
 function _write_parameter_results_to_main_container(
@@ -85,6 +125,7 @@ function _write_parameter_results_to_main_container(
         if num_dims == 1
             dst_param_data[1:length(axes(src_param_data)[1])] = src_param_data
             dst_mult_data[1:length(axes(src_mult_data)[1])] = src_mult_data
+
         elseif num_dims == 2
             param_columns = axes(src_param_data)[1]
             mult_columns = axes(src_mult_data)[1]
@@ -103,10 +144,13 @@ function solve_impl!(
     sys::PSY.System,
 )
     # Solve main problem
-    status = PSI.RunStatus.SUCCESSFUL
+    status = ISSIM.RunStatus.RUNNING
     for (index, subproblem) in container.subproblems
-        @info "Solving problem $index"
+        @debug "Solving problem $index"
         status = PSI.solve_impl!(subproblem, sys)
+        if status != ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
+            return status
+        end
     end
     write_results_to_main_container(container)
     return status

@@ -8,12 +8,12 @@ function PSI.DecisionModel{MultiRegionProblem}(
 )
     name = Symbol(get(kwargs, :name, nameof(MultiRegionProblem)))
     settings = PSI.Settings(sys; [k for k in kwargs if first(k) ∉ [:name]]...)
-    internal = PSI.ModelInternal(
+    internal = ISOPT.ModelInternal(
         MultiOptimizationContainer(
             SequentialAlgorithm,
             sys,
             settings,
-            PSY.Deterministic,
+            PSI.get_deterministic_time_series_type(sys),
             get_sub_problem_keys(template),
         ),
     )
@@ -21,15 +21,53 @@ function PSI.DecisionModel{MultiRegionProblem}(
 
     finalize_template!(template_, sys)
 
-    # return multi-region decision model container
-    return PSI.DecisionModel{MultiRegionProblem}(
+    model = PSI.DecisionModel{MultiRegionProblem}(
         name,
         template_,
         sys,
         internal,
+        PSI.SimulationInfo(),
         PSI.DecisionModelStore(),
         Dict{String, Any}(),
     )
+    PSI.validate_time_series!(model)
+    return model
+end
+
+function PSI.validate_time_series!(model::PSI.DecisionModel{MultiRegionProblem})
+    sys = PSI.get_system(model)
+    settings = PSI.get_settings(model)
+    available_resolutions = PSY.get_time_series_resolutions(sys)
+
+    if PSI.get_resolution(settings) == PSI.UNSET_RESOLUTION &&
+       length(available_resolutions) != 1
+        throw(
+            IS.ConflictingInputsError(
+                "Data contains multiple resolutions, the resolution keyword argument must be added to the Model. Time Series Resolutions: $(available_resolutions)",
+            ),
+        )
+    elseif PSI.get_resolution(settings) != PSI.UNSET_RESOLUTION &&
+           length(available_resolutions) > 1
+        if PSI.get_resolution(settings) ∉ available_resolutions
+            throw(
+                IS.ConflictingInputsError(
+                    "Resolution $(get_resolution(settings)) is not available in the system data. Time Series Resolutions: $(available_resolutions)",
+                ),
+            )
+        end
+    else
+        PSI.set_resolution!(settings, first(available_resolutions))
+    end
+
+    if PSI.get_horizon(settings) == PSI.UNSET_HORIZON
+        PSI.set_horizon!(settings, PSY.get_forecast_horizon(sys))
+    end
+
+    counts = PSY.get_time_series_counts(sys)
+    if counts.forecast_count < 1
+        error("The system does not contain forecast data. A DecisionModel can't be built.")
+    end
+    return
 end
 
 function _join_axes!(axes_data::OrderedDict{Int, Set}, ix::Int, axes_value::UnitRange{Int})
@@ -75,6 +113,11 @@ end
 
 function _make_joint_axes!(dim1::Set{UnitRange{Int}})
     return (first(dim1),)
+end
+
+function _make_joint_axes!(dim1::Set{String})
+    @error dim1
+    return (collect(dim1),)
 end
 
 function _map_containers(model::PSI.DecisionModel{MultiRegionProblem})
@@ -217,7 +260,7 @@ function PSI.build_impl!(model::PSI.DecisionModel{MultiRegionProblem})
 end
 
 function build_pre_step!(model::PSI.DecisionModel{MultiRegionProblem})
-    @info "Initializing Optimization Container For a DecisionModel"
+    @info "Initializing Optimization Container For a MultiRegionProblem DecisionModel"
     init_optimization_container!(
         PSI.get_optimization_container(model),
         PSI.get_network_model(PSI.get_template(model)),
@@ -225,7 +268,7 @@ function build_pre_step!(model::PSI.DecisionModel{MultiRegionProblem})
     )
     @info "Initializing ModelStoreParams"
     PSI.init_model_store_params!(model)
-    PSI.set_status!(model, PSI.BuildStatus.IN_PROGRESS)
+    PSI.set_status!(model, ISOPT.ModelBuildStatus.IN_PROGRESS)
     return
 end
 
@@ -258,6 +301,16 @@ end
 function PSI.solve_impl!(model::PSI.DecisionModel{MultiRegionProblem})
     status = solve_impl!(PSI.get_optimization_container(model), PSI.get_system(model))
     PSI.set_run_status!(model, status)
+    if status != ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
+        settings = PSI.get_settings(model)
+        model_name = PSI.get_name(model)
+        ts = PSI.get_current_timestamp(model)
+        if !PSI.get_allow_fails(settings)
+            error("Solving model $(model_name) failed at $(ts)")
+        else
+            @error "Solving model $(model_name) failed at $(ts). Failure Allowed"
+        end
+    end
     return
 end
 
@@ -283,7 +336,7 @@ function PSI._add_feedforward_to_model(
                 ),
             )
         end
-        @info "attaching $T to $(PSI.get_component_type(ff)) to Template $id"
+        @info "Attaching $T to $(PSI.get_component_type(ff)) to Template $id"
         PSI.attach_feedforward!(device_model, ff)
     end
     return
@@ -310,14 +363,14 @@ function PSI._add_feedforward_to_model(
                     ),
                 )
             end
-            @info "attaching $T to $(PSI.get_component_type(ff)) $(PSI.get_feedforward_meta(ff)) to Template $id"
+            @info "Attaching $T to $(PSI.get_component_type(ff)) $(PSI.get_feedforward_meta(ff)) to Template $id"
             PSI.attach_feedforward!(service_model, ff)
         else
             service_found = false
             for (key, model) in PSI.get_service_models(sub_template)
                 if key[2] == Symbol(PSI.get_component_type(ff))
                     service_found = true
-                    @info "attaching $T to $(PSI.get_component_type(ff))"
+                    @info "Attaching $T to $(PSI.get_component_type(ff)) to Template $id"
                     PSI.attach_feedforward!(model, ff)
                 end
             end
@@ -328,14 +381,14 @@ end
 
 function PSI.update_parameters!(
     model::PSI.DecisionModel{MultiRegionProblem},
-    decision_states::PSI.DatasetContainer{PSI.InMemoryDataset},
+    simulation_state::PSI.SimulationState,
 )
     container = PSI.get_optimization_container(model)
     for (ix, subproblem) in container.subproblems
-        @info "Updating subproblem $ix"
+        @debug "Updating subproblem $ix"
         PSI.cost_function_unsynch(subproblem)
         for key in keys(PSI.get_parameters(subproblem))
-            PSI.update_container_parameter_values!(subproblem, model, key, decision_states)
+            PSI.update_container_parameter_values!(subproblem, model, key, simulation_state)
         end
     end
 
@@ -368,5 +421,45 @@ function PSI.update_model!(
         build_impl!(container, get_template(model), get_system(model))
     end
     =#
+    return
+end
+
+# Code Copied here for debugging purposes
+function PSI.update_system_state!(
+    state::PSI.DatasetContainer{PSI.InMemoryDataset},
+    key::ISOPT.ExpressionKey{PSI.ActivePowerBalance, PSY.ACBus},
+    decision_state::PSI.DatasetContainer{PSI.InMemoryDataset},
+    simulation_time::Dates.DateTime,
+)
+    decision_dataset = PSI.get_dataset(decision_state, key)
+    # Gets the timestamp of the value used for the update, which might not match exactly the
+    # simulation time since the value might have not been updated yet
+    ts = PSI.get_value_timestamp(decision_dataset, simulation_time)
+    system_dataset = PSI.get_dataset(state, key)
+    PSI.get_update_timestamp(system_dataset)
+    if ts == PSI.get_update_timestamp(system_dataset)
+        # Uncomment for debugging
+        #@warn "Skipped overwriting data with the same timestamp \\
+        #       key: $(encode_key_as_string(key)), $(simulation_time), $ts"
+        return
+    end
+
+    if PSI.get_update_timestamp(system_dataset) > ts
+        error("Trying to update with past data a future state timestamp \\
+            key: $(PSI.encode_key_as_string(key)), $(simulation_time), $ts")
+    end
+
+    # Writes the timestamp of the value used for the update
+    PSI.set_update_timestamp!(system_dataset, ts)
+    # Keep coordination between fields. System state is an array of size 1
+    system_dataset.timestamps[1] = ts
+    data_set_value = PSI.get_dataset_value(decision_dataset, simulation_time)
+    # @debug decision_dataset.values["10313", :]
+    system_dataset = PSI.get_dataset(state, key)
+    # @debug "current" PSI.get_dataset(state, key).values["10313", 1]
+    PSI.set_dataset_values!(state, key, 1, data_set_value)
+    # @debug "updated" PSI.get_dataset(state, key).values["10313", 1]
+    # This value shouldn't be other than one and after one execution is no-op.
+    PSI.set_last_recorded_row!(system_dataset, 1)
     return
 end

@@ -1,25 +1,26 @@
 Base.@kwdef mutable struct MultiOptimizationContainer{T <: DecompositionAlgorithm} <:
-                           PSI.AbstractModelContainer
+                           ISOPT.AbstractOptimizationContainer
     main_problem::PSI.OptimizationContainer
     subproblems::Dict{String, PSI.OptimizationContainer}
+    subproblem_bus_map::Dict{String, Vector{Int}}
     time_steps::UnitRange{Int}
     resolution::Dates.TimePeriod
     settings::PSI.Settings
     settings_copy::PSI.Settings
-    variables::Dict{PSI.VariableKey, AbstractArray}
-    aux_variables::Dict{PSI.AuxVarKey, AbstractArray}
-    duals::Dict{PSI.ConstraintKey, AbstractArray}
-    constraints::Dict{PSI.ConstraintKey, AbstractArray}
+    variables::Dict{ISOPT.VariableKey, AbstractArray}
+    aux_variables::Dict{ISOPT.AuxVarKey, AbstractArray}
+    duals::Dict{ISOPT.ConstraintKey, AbstractArray}
+    constraints::Dict{ISOPT.ConstraintKey, AbstractArray}
     objective_function::PSI.ObjectiveFunction
-    expressions::Dict{PSI.ExpressionKey, AbstractArray}
-    parameters::Dict{PSI.ParameterKey, PSI.ParameterContainer}
+    expressions::Dict{ISOPT.ExpressionKey, AbstractArray}
+    parameters::Dict{ISOPT.ParameterKey, PSI.ParameterContainer}
     primal_values_cache::PSI.PrimalValuesCache
-    initial_conditions::Dict{PSI.ICKey, Vector{<:PSI.InitialCondition}}
+    initial_conditions::Dict{ISOPT.InitialConditionKey, Vector{<:PSI.InitialCondition}}
     initial_conditions_data::PSI.InitialConditionsData
     base_power::Float64
-    optimizer_stats::PSI.OptimizerStats  # TODO: needs custom struct
+    optimizer_stats::ISOPT.OptimizerStats  # TODO: needs custom struct
     built_for_recurrent_solves::Bool
-    metadata::PSI.OptimizationContainerMetadata
+    metadata::ISOPT.OptimizationContainerMetadata
     default_time_series_type::Type{<:PSY.TimeSeriesData}  # Maybe isn't needed here
     mpi_info::Union{Nothing, MpiInfo}
 end
@@ -31,7 +32,16 @@ function MultiOptimizationContainer(
     ::Type{U},
     subproblem_keys::Vector{String},
 ) where {T <: DecompositionAlgorithm, U <: PSY.TimeSeriesData}
-    resolution = PSY.get_time_series_resolution(sys)
+    resolutions = PSY.get_time_series_resolutions(sys)
+
+    if length(resolutions) > 1
+        error(
+            "Multiple time series resolutions not supported for MultiOptimizationContainer",
+        )
+    else
+        resolution = resolutions[1]
+    end
+
     if isabstracttype(U)
         error("Default Time Series Type $U can't be abstract")
     end
@@ -40,28 +50,30 @@ function MultiOptimizationContainer(
     subproblems = Dict(
         k => PSI.OptimizationContainer(sys, settings, nothing, U) for k in subproblem_keys
     )
+    subproblem_bus_map = Dict{String, Vector{Int}}()
 
     return MultiOptimizationContainer{T}(;
         main_problem=PSI.OptimizationContainer(sys, settings, nothing, U),
         subproblems=subproblems,
+        subproblem_bus_map=subproblem_bus_map,
         time_steps=1:1,
         resolution=IS.time_period_conversion(resolution),
         settings=settings,
         settings_copy=PSI.copy_for_serialization(settings),
-        variables=Dict{PSI.VariableKey, AbstractArray}(),
-        aux_variables=Dict{PSI.AuxVarKey, AbstractArray}(),
-        duals=Dict{PSI.ConstraintKey, AbstractArray}(),
-        constraints=Dict{PSI.ConstraintKey, AbstractArray}(),
+        variables=Dict{ISOPT.VariableKey, AbstractArray}(),
+        aux_variables=Dict{ISOPT.AuxVarKey, AbstractArray}(),
+        duals=Dict{ISOPT.ConstraintKey, AbstractArray}(),
+        constraints=Dict{ISOPT.ConstraintKey, AbstractArray}(),
         objective_function=PSI.ObjectiveFunction(),
-        expressions=Dict{PSI.ExpressionKey, AbstractArray}(),
-        parameters=Dict{PSI.ParameterKey, PSI.ParameterContainer}(),
+        expressions=Dict{ISOPT.ExpressionKey, AbstractArray}(),
+        parameters=Dict{ISOPT.ParameterKey, PSI.ParameterContainer}(),
         primal_values_cache=PSI.PrimalValuesCache(),
-        initial_conditions=Dict{PSI.ICKey, Vector{PSI.InitialCondition}}(),
+        initial_conditions=Dict{ISOPT.InitialConditionKey, Vector{PSI.InitialCondition}}(),
         initial_conditions_data=PSI.InitialConditionsData(),
         base_power=PSY.get_base_power(sys),
-        optimizer_stats=PSI.OptimizerStats(),
+        optimizer_stats=ISOPT.OptimizerStats(),
         built_for_recurrent_solves=false,
-        metadata=PSI.OptimizationContainerMetadata(),
+        metadata=ISOPT.OptimizationContainerMetadata(),
         default_time_series_type=U,
         mpi_info=nothing,
     )
@@ -149,7 +161,9 @@ function init_optimization_container!(
     if PSI.get_horizon(settings) == PSI.UNSET_HORIZON
         PSI.set_horizon!(settings, PSY.get_forecast_horizon(sys))
     end
-    container.time_steps = 1:PSI.get_horizon(settings)
+    horizon_count = (PSI.get_horizon(settings) ÷ PSI.get_resolution(settings))
+    @assert horizon_count > 0
+    container.time_steps = 1:horizon_count
 
     stats = PSI.get_optimizer_stats(container)
     stats.detailed_stats = PSI.get_detailed_optimizer_stats(settings)
