@@ -105,6 +105,14 @@ function _get_axes!(
 end
 
 function _make_joint_axes!(
+    dim1::Set{String},
+    dim2::Set{T},
+    dim3::Set{UnitRange{Int}},
+) where {T <: Union{Int, String}}
+    return (collect(dim1), collect(dim2), first(dim3))
+end
+
+function _make_joint_axes!(
     dim1::Set{T},
     dim2::Set{UnitRange{Int}},
 ) where {T <: Union{Int, String}}
@@ -129,7 +137,6 @@ function _map_containers(model::PSI.DecisionModel{MultiRegionProblem})
     for subproblem_container in values(container.subproblems)
         _get_axes!(common_axes, subproblem_container)
     end
-
     for (field, vals) in common_axes
         field_data = getproperty(container, field)
         for (key, axes_data) in vals
@@ -279,7 +286,7 @@ function instantiate_network_model(model::PSI.DecisionModel{MultiRegionProblem})
     for (id, sub_template) in get_sub_templates(template)
         network_model = PSI.get_network_model(sub_template)
         PSI.set_subsystem!(network_model, id)
-        PSI.instantiate_network_model(network_model, PSI.get_system(model))
+        PSI.instantiate_network_model!(network_model, PSI.get_system(model))
     end
     return
 end

@@ -3,7 +3,7 @@ const GQEVF = JuMP.GenericQuadExpr{Float64, VariableRef}
 
 function get_jump_models(model::PSI.DecisionModel{MultiRegionProblem})
     jump_model_dict = Dict()
-    subproblem_keys = keys(problem.internal.container.subproblems)
+    subproblem_keys = keys(model.internal.container.subproblems)
     for k in subproblem_keys
         jump_model_dict[k] = PSI.get_jump_model(
             IS.Optimization.get_container(PSI.get_internal(model)).subproblems[k],

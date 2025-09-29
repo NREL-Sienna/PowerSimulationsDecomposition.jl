@@ -20,14 +20,8 @@ function build_main_problem!(
     template::MultiProblemTemplate,
     sys::PSY.System,
 )
-    branch_models_dict = keys(PSI.get_branch_models(template))
+
     device_models_dict = keys(PSI.get_device_models(template))
-    if :TwoTerminalHVDCLine ∈ branch_models_dict ||
-       :TwoTerminalVSCDCLine ∈ branch_models_dict
-        has_hvdc = true
-    else
-        has_hvdc = false
-    end
     for k in keys(container.subproblems)
         subsystem_buses = PSY.get_components(PSY.ACBus, sys; subsystem_name=k)
         subsystem_bus_nos = [PSY.get_number(b) for b in subsystem_buses]
@@ -47,11 +41,11 @@ function build_main_problem!(
             end
         end
         subsystem_hvdcs = PSY.get_components(
-            Union{PSY.TwoTerminalHVDCLine, PSY.TwoTerminalVSCDCLine},
+            PSY.TwoTerminalHVDC,
             sys;
             subsystem_name=k,
         )
-        if has_hvdc
+        if _has_hvdc_model(template)
             for hvdc in subsystem_hvdcs
                 from_bus_no = PSY.get_number(PSY.get_from(PSY.get_arc(hvdc)))
                 to_bus_no = PSY.get_number(PSY.get_to(PSY.get_arc(hvdc)))
@@ -66,6 +60,20 @@ function build_main_problem!(
         end
     end
 end
+
+function _has_hvdc_model(template::MultiProblemTemplate)
+    branch_models_dict = keys(PSI.get_branch_models(template))
+    for hvdc_type in CONCRETE_HVDC_TYPES 
+        if hvdc_type in branch_models_dict 
+            return true 
+        end 
+    end 
+    return false 
+end 
+
+# Note: With the addition of 3D results processing, we can eliminate this design of writing
+# all subsystem results to a signle container. This way we avoid overwriting the results from 
+# different subsystem problems and can still access all relevant results using the API. 
 
 # The drawback of this approach is that it will loop over the results twice
 # once to write into the main container and a second time when writing into the
@@ -84,18 +92,16 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
                     continue
                 end
                 num_dims = ndims(src)
-                num_dims > 2 && error("ndims = $(num_dims) is not supported yet")
-                data = nothing
-                data = PSI.jump_value.(src)
                 dst = main_container_data_field[key]
                 if num_dims == 1
+                    data = nothing
+                    data = PSI.jump_value.(src)
                     dst[1:length(axes(src)[1])] = data
                 elseif num_dims == 2
                     columns = _get_main_container_columns(container, k, key, src)
                     len = length(axes(src)[2])
                     dst[columns, 1:len] = PSI.jump_value.(src[columns, :])
                 elseif num_dims == 3
-                    # TODO: untested
                     axis1 = axes(src)[1]
                     axis2 = axes(src)[2]
                     len = length(axes(src)[3])

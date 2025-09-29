@@ -49,7 +49,7 @@ end
 if name_ == "AC_inter"
     br = get_component(PSY.MonitoredLine, sys_twin_rts_DA, "AC_interconnection")
 elseif name_ == "HVDC_inter"
-    br = get_component(PSY.TwoTerminalHVDCLine, sys_twin_rts_DA, "HVDC_interconnection")
+    br = get_component(PSY.TwoTerminalGenericHVDCLine, sys_twin_rts_DA, "HVDC_interconnection")
 end
 
 PSY.set_ext!(br, Dict("subregion" => Set(["1", "2"])))
@@ -106,7 +106,7 @@ set_service_model!(
 
 # add the HVDC line in case is present
 if HVDC_inter == "true"
-    set_device_model!(template_uc, TwoTerminalHVDCLine, HVDCTwoTerminalDispatch)
+    set_device_model!(template_uc, TwoTerminalGenericHVDCLine, HVDCTwoTerminalDispatch)
 else
     set_device_model!(template_uc, MonitoredLine, StaticBranch)
 end

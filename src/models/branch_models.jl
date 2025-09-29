@@ -119,7 +119,7 @@ function PSI._make_flow_expressions!(
     branches::Vector{String},
     time_steps::UnitRange{Int},
     ptdf::PSI.ValidPTDFS,
-    nodal_balance_expressions::PSI.JuMPAffineExpressionDArray,
+    nodal_balance_expressions::PSI.JuMPAffineExpressionDArrayIntInt,
     state_estimation_injections,
     state_estimation_flows,
     branch_Type::DataType,
