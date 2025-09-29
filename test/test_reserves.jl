@@ -282,7 +282,7 @@ end
     template = MultiProblemTemplate(NetworkModel(SplitAreaPTDFPowerModel), ["a", "b"])
     set_device_model!(template, ThermalStandard, ThermalBasicDispatch)
     set_device_model!(template, PowerLoad, StaticPowerLoad)
-    set_device_model!(template, DeviceModel(MonitoredLine, StaticBranch), "a")  # Only assign Monitored Line to subsystem A template
+    set_device_model!(template, DeviceModel(MonitoredLine, StaticBranch))
     set_device_model!(template, Line, StaticBranch)
     set_service_model!(
         template,

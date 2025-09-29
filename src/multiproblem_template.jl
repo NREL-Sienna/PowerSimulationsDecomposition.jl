@@ -147,23 +147,6 @@ function PSI.set_device_model!(
     return
 end
 
-# Set device model for only one subsystem:
-function PSI.set_device_model!(
-    template::MultiProblemTemplate,
-    model::PSI.DeviceModel{<:PSY.Branch, <:PSI.AbstractDeviceFormulation},
-    subsystem_id::String,
-)
-    PSI.set_device_model!(template.base_template, model)
-    for (id, sub_template) in get_sub_templates(template)
-        if id == subsystem_id
-            new_model = deepcopy(model)
-            PSI.set_subsystem!(new_model, id)
-            PSI.set_device_model!(sub_template, new_model)
-        end
-    end
-    return
-end
-
 """
 Sets the service model in a template using a name and the service type and formulation.
 Builds a default ServiceModel with use_service_name set to true.
