@@ -18,8 +18,8 @@
 end
 
 # TODO -unexpected change in number of variables between psy versions.
-        #psy4->psy5 adds 36 variables to subproblem a 
-        #psy4 -> psy5 adds 72 variables to subproblem b  
+#psy4->psy5 adds 36 variables to subproblem a 
+#psy4 -> psy5 adds 72 variables to subproblem b  
 @testset "MOI test - w/out reserves" begin
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     area_subsystem_map = Dict("1" => "a", "2" => "b", "3" => "b")
@@ -117,22 +117,28 @@ HiGHS_optimizer_small_gap = JuMP.optimizer_with_attributes(
 )
 
 @testset "RangeReserveWithDeliverabilityConstraints + AreaPTDFPowerModel (reference): separate reserves" begin
-    sys = build_system(PSISystems, "two_area_pjm_DA"; add_reserves = true)
+    sys = build_system(PSISystems, "two_area_pjm_DA"; add_reserves=true)
     transform_single_time_series!(sys, Hour(24), Hour(1))
 
     # Make Sundance must run with a minimum active power: 
     set_must_run!(get_component(ThermalStandard, sys, "Sundance_1"), true)
-    set_active_power_limits!(get_component(ThermalStandard, sys, "Sundance_1"), (min=1.0, max = 2.0))
+    set_active_power_limits!(
+        get_component(ThermalStandard, sys, "Sundance_1"),
+        (min=1.0, max=2.0),
+    )
     set_must_run!(get_component(ThermalStandard, sys, "Sundance_2"), true)
-    set_active_power_limits!(get_component(ThermalStandard, sys, "Sundance_2"), (min=1.0, max = 2.0))
+    set_active_power_limits!(
+        get_component(ThermalStandard, sys, "Sundance_2"),
+        (min=1.0, max=2.0),
+    )
 
     components_outages_names = ["Sundance_1", "Sundance_2"]
     reserve_names = ["Reserve1_1", "Reserve1_2"]
     for (component_name, reserve_name) in zip(components_outages_names, reserve_names)
         # --- Create Outage Data ---
         transition_data = GeometricDistributionForcedOutage(;
-            mean_time_to_recovery = 10,
-            outage_transition_probability = 1.0,
+            mean_time_to_recovery=10,
+            outage_transition_probability=1.0,
         )
         # --- Add Outage Supplemental attribute to device and services that should respond ---
         component = get_component(ThermalStandard, sys, component_name)
@@ -146,20 +152,22 @@ HiGHS_optimizer_small_gap = JuMP.optimizer_with_attributes(
     set_device_model!(template, PowerLoad, StaticPowerLoad)
     set_device_model!(template, DeviceModel(MonitoredLine, StaticBranch))  # Only assign Monitored Line to subsystem A template
     set_device_model!(template, Line, StaticBranch)
-    set_service_model!(template,
+    set_service_model!(
+        template,
         ServiceModel(
             VariableReserve{ReserveUp},
             RangeReserveWithDeliverabilityConstraints,
             "Reserve1_1",
-        ), 
+        ),
     )
-    set_service_model!(template,
+    set_service_model!(
+        template,
         ServiceModel(
             VariableReserve{ReserveUp},
             RangeReserveWithDeliverabilityConstraints,
             "Reserve1_2",
         ),
-    )  
+    )
     problem = DecisionModel(
         template,
         sys;
@@ -171,51 +179,80 @@ HiGHS_optimizer_small_gap = JuMP.optimizer_with_attributes(
     solve!(problem)
     res = OptimizationProblemResults(problem)
 
-    post_contingency_deployment_1 = read_variable(res, "PostContingencyActivePowerReserveDeploymentVariable__VariableReserve__ReserveUp__Reserve1_1")
-    post_contingency_deployment_2 = read_variable(res, "PostContingencyActivePowerReserveDeploymentVariable__VariableReserve__ReserveUp__Reserve1_2")
+    post_contingency_deployment_1 = read_variable(
+        res,
+        "PostContingencyActivePowerReserveDeploymentVariable__VariableReserve__ReserveUp__Reserve1_1",
+    )
+    post_contingency_deployment_2 = read_variable(
+        res,
+        "PostContingencyActivePowerReserveDeploymentVariable__VariableReserve__ReserveUp__Reserve1_2",
+    )
     # Sum of the reserve deployments is equivalent to the outaged generator: 
-    for post_contingency_deployment in [post_contingency_deployment_1, post_contingency_deployment_2] 
+    for post_contingency_deployment in
+        [post_contingency_deployment_1, post_contingency_deployment_2]
         for i in unique(post_contingency_deployment[!, :DateTime])
-            @test isapprox(sum(filter(row -> row.DateTime == i, post_contingency_deployment)[:, "value"]), 100.0)
-        end 
-    end 
+            @test isapprox(
+                sum(
+                    filter(row -> row.DateTime == i, post_contingency_deployment)[
+                        :,
+                        "value",
+                    ],
+                ),
+                100.0,
+            )
+        end
+    end
 
-    flows = read_variable(res, "FlowActivePowerVariable__Line", table_format = TableFormat.WIDE)
-    post_contingency_flows_1 = read_expression(res, "PostContingencyBranchFlow__VariableReserve__ReserveUp__Reserve1_1");
-    post_contingency_flows_2 = read_expression(res, "PostContingencyBranchFlow__VariableReserve__ReserveUp__Reserve1_2");
+    flows =
+        read_variable(res, "FlowActivePowerVariable__Line", table_format=TableFormat.WIDE)
+    post_contingency_flows_1 = read_expression(
+        res,
+        "PostContingencyBranchFlow__VariableReserve__ReserveUp__Reserve1_1",
+    )
+    post_contingency_flows_2 = read_expression(
+        res,
+        "PostContingencyBranchFlow__VariableReserve__ReserveUp__Reserve1_2",
+    )
     for line_name in get_name.(get_components(Line, sys))
         flow = flows[:, line_name]
-        post_contingency_flow_1 = filter(row->row.name2 == line_name, post_contingency_flows_1)[:, :value]
-        post_contingency_flow_2 = filter(row->row.name2 == line_name, post_contingency_flows_2)[:, :value]
+        post_contingency_flow_1 =
+            filter(row -> row.name2 == line_name, post_contingency_flows_1)[:, :value]
+        post_contingency_flow_2 =
+            filter(row -> row.name2 == line_name, post_contingency_flows_2)[:, :value]
         # Post contingency flow in the area of the outage is different, post contingency flow from the other area is the same:
         if occursin("_1", line_name)
             @test all(isapprox.(flow, post_contingency_flow_2))
             @test !all(isapprox.(flow, post_contingency_flow_1))
-        elseif occursin("_2", line_name) 
+        elseif occursin("_2", line_name)
             @test all(isapprox.(flow, post_contingency_flow_1))
             @test !all(isapprox.(flow, post_contingency_flow_2))
-        end 
-    end 
+        end
+    end
 end
 
-
 @testset "RangeReserveWithDeliverabilityConstraints + SplitAreaPTDFPowerModel: separate reserves" begin
-    sys = build_system(PSISystems, "two_area_pjm_DA"; add_reserves = true)
+    sys = build_system(PSISystems, "two_area_pjm_DA"; add_reserves=true)
     transform_single_time_series!(sys, Hour(24), Hour(1))
 
     # Make Sundance must run with a minimum active power: 
     set_must_run!(get_component(ThermalStandard, sys, "Sundance_1"), true)
-    set_active_power_limits!(get_component(ThermalStandard, sys, "Sundance_1"), (min=1.0, max = 2.0))
+    set_active_power_limits!(
+        get_component(ThermalStandard, sys, "Sundance_1"),
+        (min=1.0, max=2.0),
+    )
     set_must_run!(get_component(ThermalStandard, sys, "Sundance_2"), true)
-    set_active_power_limits!(get_component(ThermalStandard, sys, "Sundance_2"), (min=1.0, max = 2.0))
+    set_active_power_limits!(
+        get_component(ThermalStandard, sys, "Sundance_2"),
+        (min=1.0, max=2.0),
+    )
 
     components_outages_names = ["Sundance_1", "Sundance_2"]
     reserve_names = ["Reserve1_1", "Reserve1_2"]
     for (component_name, reserve_name) in zip(components_outages_names, reserve_names)
         # --- Create Outage Data ---
         transition_data = GeometricDistributionForcedOutage(;
-            mean_time_to_recovery = 10,
-            outage_transition_probability = 1.0,
+            mean_time_to_recovery=10,
+            outage_transition_probability=1.0,
         )
         # --- Add Outage Supplemental attribute to device and services that should respond ---
         component = get_component(ThermalStandard, sys, component_name)
@@ -232,37 +269,39 @@ end
     add_component_to_subsystem!(sys, "b", r1_2)
 
     # From bus determines subsystem of ACBranch
-    a_buses = get_components(ACBus, sys; subsystem_name = "a")
-    b_buses = get_components(ACBus, sys; subsystem_name = "b")
+    a_buses = get_components(ACBus, sys; subsystem_name="a")
+    b_buses = get_components(ACBus, sys; subsystem_name="b")
     for b in get_components(ACTransmission, sys)
         from_bus = get_from(get_arc(b))
         if from_bus ∈ a_buses
             add_component_to_subsystem!(sys, "a", b)
         elseif from_bus ∈ b_buses
             add_component_to_subsystem!(sys, "b", b)
-        end 
+        end
     end
     template = MultiProblemTemplate(NetworkModel(SplitAreaPTDFPowerModel), ["a", "b"])
     set_device_model!(template, ThermalStandard, ThermalBasicDispatch)
     set_device_model!(template, PowerLoad, StaticPowerLoad)
     set_device_model!(template, DeviceModel(MonitoredLine, StaticBranch), "a")  # Only assign Monitored Line to subsystem A template
     set_device_model!(template, Line, StaticBranch)
-    set_service_model!(template,
+    set_service_model!(
+        template,
         ServiceModel(
             VariableReserve{ReserveUp},
             RangeReserveWithDeliverabilityConstraints,
             "Reserve1_1",
-        ), 
+        ),
         "a",
     )
-    set_service_model!(template,
+    set_service_model!(
+        template,
         ServiceModel(
             VariableReserve{ReserveUp},
             RangeReserveWithDeliverabilityConstraints,
             "Reserve1_2",
         ),
         "b",
-    )  
+    )
     problem = DecisionModel(
         MultiRegionProblem,
         template,
@@ -274,31 +313,58 @@ end
     build_out = build!(problem; output_dir=mktempdir())
     solve!(problem)
     res = OptimizationProblemResults(problem)
-    post_contingency_deployment_1 = get_variable_values(res)[PSI.VariableKey{PostContingencyActivePowerReserveDeploymentVariable, VariableReserve{ReserveUp}}("Reserve1_1")]
-    post_contingency_deployment_2 = get_variable_values(res)[PSI.VariableKey{PostContingencyActivePowerReserveDeploymentVariable, VariableReserve{ReserveUp}}("Reserve1_2")]
+    post_contingency_deployment_1 = get_variable_values(res)[PSI.VariableKey{
+        PostContingencyActivePowerReserveDeploymentVariable,
+        VariableReserve{ReserveUp},
+    }(
+        "Reserve1_1",
+    )]
+    post_contingency_deployment_2 = get_variable_values(res)[PSI.VariableKey{
+        PostContingencyActivePowerReserveDeploymentVariable,
+        VariableReserve{ReserveUp},
+    }(
+        "Reserve1_2",
+    )]
     # Sum of the reserve deployments is equivalent to the outaged generator: 
-    for post_contingency_deployment in [post_contingency_deployment_1, post_contingency_deployment_2] 
+    for post_contingency_deployment in
+        [post_contingency_deployment_1, post_contingency_deployment_2]
         for i in unique(post_contingency_deployment[!, :time_index])
-            @test isapprox(sum(filter(row -> row.time_index == i, post_contingency_deployment)[:, "value"]), 1.0)
-        end 
-    end 
+            @test isapprox(
+                sum(
+                    filter(row -> row.time_index == i, post_contingency_deployment)[
+                        :,
+                        "value",
+                    ],
+                ),
+                1.0,
+            )
+        end
+    end
 
-    flows = get_variable_values(res)[PSI.VariableKey{FlowActivePowerVariable, Line}("")]        
-    post_contingency_flows_1 = get_expression_values(res)[PSI.ExpressionKey{PostContingencyBranchFlow, VariableReserve{ReserveUp}}("Reserve1_1")]
-    post_contingency_flows_2 = get_expression_values(res)[PSI.ExpressionKey{PostContingencyBranchFlow, VariableReserve{ReserveUp}}("Reserve1_2")]
+    flows = get_variable_values(res)[PSI.VariableKey{FlowActivePowerVariable, Line}("")]
+    post_contingency_flows_1 = get_expression_values(res)[PSI.ExpressionKey{
+        PostContingencyBranchFlow,
+        VariableReserve{ReserveUp},
+    }(
+        "Reserve1_1",
+    )]
+    post_contingency_flows_2 = get_expression_values(res)[PSI.ExpressionKey{
+        PostContingencyBranchFlow,
+        VariableReserve{ReserveUp},
+    }(
+        "Reserve1_2",
+    )]
     for line_name in get_name.(get_components(Line, sys))
-        flow = filter(row->row.name == line_name, flows)[:, :value]
-        post_contingency_flow_1 = filter(row->row.name2 == line_name, post_contingency_flows_1)[:, :value]
-        post_contingency_flow_2 = filter(row->row.name2 == line_name, post_contingency_flows_2)[:, :value]
+        flow = filter(row -> row.name == line_name, flows)[:, :value]
+        post_contingency_flow_1 =
+            filter(row -> row.name2 == line_name, post_contingency_flows_1)[:, :value]
+        post_contingency_flow_2 =
+            filter(row -> row.name2 == line_name, post_contingency_flows_2)[:, :value]
         # Post contingency flow in the area of the outage is different
         if occursin("_1", line_name)
             @test !all(isapprox.(flow, post_contingency_flow_1; atol=1e-6))
-        elseif occursin("_2", line_name) 
+        elseif occursin("_2", line_name)
             @test !all(isapprox.(flow, post_contingency_flow_2; atol=1e-6))
-        end 
-    end 
+        end
+    end
 end
-
-
-
-

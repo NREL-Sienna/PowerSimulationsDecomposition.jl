@@ -20,7 +20,6 @@ function build_main_problem!(
     template::MultiProblemTemplate,
     sys::PSY.System,
 )
-
     device_models_dict = keys(PSI.get_device_models(template))
     for k in keys(container.subproblems)
         subsystem_buses = PSY.get_components(PSY.ACBus, sys; subsystem_name=k)
@@ -40,11 +39,7 @@ function build_main_problem!(
                 end
             end
         end
-        subsystem_hvdcs = PSY.get_components(
-            PSY.TwoTerminalHVDC,
-            sys;
-            subsystem_name=k,
-        )
+        subsystem_hvdcs = PSY.get_components(PSY.TwoTerminalHVDC, sys; subsystem_name=k)
         if _has_hvdc_model(template)
             for hvdc in subsystem_hvdcs
                 from_bus_no = PSY.get_number(PSY.get_from(PSY.get_arc(hvdc)))
@@ -63,13 +58,13 @@ end
 
 function _has_hvdc_model(template::MultiProblemTemplate)
     branch_models_dict = keys(PSI.get_branch_models(template))
-    for hvdc_type in CONCRETE_HVDC_TYPES 
-        if hvdc_type in branch_models_dict 
-            return true 
-        end 
-    end 
-    return false 
-end 
+    for hvdc_type in CONCRETE_HVDC_TYPES
+        if hvdc_type in branch_models_dict
+            return true
+        end
+    end
+    return false
+end
 
 # Note: With the addition of 3D results processing, we can eliminate this design of writing
 # all subsystem results to a signle container. This way we avoid overwriting the results from 

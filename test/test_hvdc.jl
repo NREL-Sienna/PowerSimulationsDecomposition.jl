@@ -32,7 +32,7 @@ end
     )
     build_out = build!(problem; console_level=Logging.AboveMaxLevel, output_dir=mktempdir())
     @test build_out == PowerSimulations.ModelBuildStatus.FAILED
-end 
+end
 
 @testset "HVDC spans subsystems and is modeled but both terminal buses belong to same subsytem (build suceeds)" begin
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")

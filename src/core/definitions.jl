@@ -2,4 +2,5 @@ const CONTAINER_FIELDS = [:variables, :aux_variables, :constraints, :expressions
 const ALL_CONTAINER_FIELDS =
     [:variables, :aux_variables, :constraints, :expressions, :duals, :parameters]
 
-const CONCRETE_HVDC_TYPES = [:TwoTerminalGenericHVDCLine, :TwoTerminalLCCLine, :TwoTerminalGenericHVDCLine]
+const CONCRETE_HVDC_TYPES =
+    [:TwoTerminalGenericHVDCLine, :TwoTerminalLCCLine, :TwoTerminalGenericHVDCLine]

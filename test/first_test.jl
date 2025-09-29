@@ -49,7 +49,11 @@ end
 if name_ == "AC_inter"
     br = get_component(PSY.MonitoredLine, sys_twin_rts_DA, "AC_interconnection")
 elseif name_ == "HVDC_inter"
-    br = get_component(PSY.TwoTerminalGenericHVDCLine, sys_twin_rts_DA, "HVDC_interconnection")
+    br = get_component(
+        PSY.TwoTerminalGenericHVDCLine,
+        sys_twin_rts_DA,
+        "HVDC_interconnection",
+    )
 end
 
 PSY.set_ext!(br, Dict("subregion" => Set(["1", "2"])))

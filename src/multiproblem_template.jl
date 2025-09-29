@@ -159,7 +159,7 @@ function PSI.set_device_model!(
             new_model = deepcopy(model)
             PSI.set_subsystem!(new_model, id)
             PSI.set_device_model!(sub_template, new_model)
-        end 
+        end
     end
     return
 end
@@ -243,7 +243,7 @@ function PSI.set_service_model!(
         if id == subsystem_id
             PSI.set_subsystem!(model, id)
             PSI.set_service_model!(sub_template, deepcopy(model))
-        end 
+        end
     end
     return
 end
