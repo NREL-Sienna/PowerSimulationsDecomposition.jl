@@ -55,24 +55,20 @@
         "119",
     ] == -0.6255739732919298
 
-    # NOTE - open issue for results processing (this is only testing a single value at t=0): https://github.com/NREL-Sienna/PowerSimulations.jl/issues/1307
-    # We can manually go in and grab the results from the container to test all 5 values: 
-    param = sim.models.decision_models[2].internal.container.parameters
-    state_estimation_injection =
-        param[InfrastructureSystems.Optimization.ParameterKey{
-            PowerSimulationsDecomposition.StateEstimationInjections,
-            ACBus,
-        }(
-            "",
-        )].parameter_array
-    expr = sim.models.decision_models[1].internal.container.expressions
-    active_power_balance =
-        expr[InfrastructureSystems.Optimization.ExpressionKey{ActivePowerBalance, ACBus}(
-            "",
-        )]
+    state_estimation_injection = read_realized_variable(
+        results_ucsub,
+        "StateEstimationInjections__ACBus";
+        table_format=TableFormat.WIDE,
+    )
+    active_power_balance = read_realized_variable(
+        results_uc0,
+        "ActivePowerBalance__ACBus";
+        table_format=TableFormat.WIDE,
+    )
+
     for b_number in [get_number(x) for x in get_components(ACBus, sys)]
-        apb = value.(active_power_balance[b_number, :]).data
-        sei = state_estimation_injection[string(b_number), :].data
+        apb = value.(active_power_balance[:, string(b_number)])
+        sei = state_estimation_injection[:, string(b_number)]
         @test isapprox(apb, sei)
     end
 end
@@ -112,27 +108,5 @@ end
         table_format=TableFormat.WIDE,
     )
 
-    @test isapprox(flow_sub_original[1, "A28"], flow_sub_se_line[1, "A28"])
-
-    # NOTE - open issue for results processing (this is only testing a single value at t=0): https://github.com/NREL-Sienna/PowerSimulations.jl/issues/1307
-    # We can manually go in and grab the results from the container to test all 5 values: 
-    vars_original = sim_original.models.decision_models[2].internal.container.variables
-    flows_original = Vector(
-        vars_original[PowerSimulations.VariableKey{FlowActivePowerVariable, MonitoredLine}(
-            "",
-        )][
-            "A28",
-            :,
-        ],
-    )
-    vars_se_line = sim_se_line.models.decision_models[2].internal.container.variables
-    flows_se_line = Vector(
-        vars_se_line[PowerSimulations.VariableKey{FlowActivePowerVariable, MonitoredLine}(
-            "",
-        )][
-            "A28",
-            :,
-        ],
-    )
-    @test isapprox(flows_original, flows_se_line)
+    @test isapprox(flow_sub_original[:, "A28"], flow_sub_se_line[:, "A28"])
 end
