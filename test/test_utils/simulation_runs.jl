@@ -4,6 +4,8 @@ function run_rts_multi_stage_decomposition_simulation(
     mode="vertical",
     monitored_line_formulations=[StaticBranchUnbounded, StaticBranchUnbounded],
     use_emulator=false,
+    add_reserves=false,
+    in_memory=false,
 )
     modeled_lines = ["CA-1", "CB-1", "AB1", "A28"]
     convert_to_monitored_line = [(name="A28", flow_limit=20.0)]
@@ -56,6 +58,33 @@ function run_rts_multi_stage_decomposition_simulation(
             attributes=Dict("filter_function" => x -> get_name(x) in modeled_lines),
         ),
     )
+    if add_reserves
+        # add reserve formulations:
+        set_service_model!(
+            template_uc,
+            ServiceModel(
+                VariableReserve{ReserveUp},
+                RangeReserveWithDeliverabilityConstraints,
+                "Spin_Up_R1",
+            ),
+        )
+        set_service_model!(
+            template_uc,
+            ServiceModel(
+                VariableReserve{ReserveUp},
+                RangeReserveWithDeliverabilityConstraints,
+                "Spin_Up_R2",
+            ),
+        )
+        set_service_model!(
+            template_uc,
+            ServiceModel(
+                VariableReserve{ReserveUp},
+                RangeReserveWithDeliverabilityConstraints,
+                "Spin_Up_R3",
+            ),
+        )
+    end
     # Set up Model 2 (MultiProblem)
     template_uc2 = MultiProblemTemplate(
         NetworkModel(SplitAreaPTDFPowerModel; use_slacks=true),
@@ -82,6 +111,44 @@ function run_rts_multi_stage_decomposition_simulation(
             attributes=Dict("filter_function" => x -> get_name(x) in modeled_lines),
         ),
     )
+    if add_reserves
+        # add modeled reserve components to subsystems: 
+        r1 = get_component(VariableReserve{ReserveUp}, sys2, "Spin_Up_R1")
+        add_component_to_subsystem!(sys2, "a", r1)
+        r2 = get_component(VariableReserve{ReserveUp}, sys2, "Spin_Up_R2")
+        add_component_to_subsystem!(sys2, "b", r2)
+        r3 = get_component(VariableReserve{ReserveUp}, sys2, "Spin_Up_R3")
+        add_component_to_subsystem!(sys2, "a", r3)
+
+        # add reserve formulations (also to specific subsystems):
+        set_service_model!(
+            template_uc2,
+            ServiceModel(
+                VariableReserve{ReserveUp},
+                RangeReserveWithDeliverabilityConstraints,
+                "Spin_Up_R1",
+            ),
+            "a",
+        )
+        set_service_model!(
+            template_uc2,
+            ServiceModel(
+                VariableReserve{ReserveUp},
+                RangeReserveWithDeliverabilityConstraints,
+                "Spin_Up_R2",
+            ),
+            "b",
+        )
+        set_service_model!(
+            template_uc2,
+            ServiceModel(
+                VariableReserve{ReserveUp},
+                RangeReserveWithDeliverabilityConstraints,
+                "Spin_Up_R3",
+            ),
+            "a",
+        )
+    end
     if use_emulator
         template_em = ProblemTemplate(NetworkModel(AreaPTDFPowerModel; use_slacks=true))
         set_device_model!(template_em, ThermalStandard, ThermalBasicUnitCommitment)
@@ -169,7 +236,7 @@ function run_rts_multi_stage_decomposition_simulation(
     )
 
     build_out = build!(sim; console_level=Logging.Info, serialize=false)
-    execute_status = execute!(sim; enable_progress_bar=true)
+    execute_status = execute!(sim; in_memory=in_memory, enable_progress_bar=true)
 
     return SimulationResults(sim), sim
 end
