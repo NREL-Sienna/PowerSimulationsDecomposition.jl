@@ -118,7 +118,7 @@ function PSI._make_flow_expressions!(
     container::PSI.OptimizationContainer,
     branches::Vector{String},
     time_steps::UnitRange{Int},
-    ptdf::PSI.ValidPTDFS,
+    ptdf::Union{PNM.PTDF, PNM.VirtualPTDF},
     nodal_balance_expressions::PSI.JuMPAffineExpressionDArrayIntInt,
     state_estimation_injections,
     state_estimation_flows,

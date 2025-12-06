@@ -42,7 +42,6 @@ function PSI.construct_network!(
         model,
     )
     PSI.add_constraints!(container, PSI.CopperPlateBalanceConstraint, sys, model)
-    PSI.add_constraints!(container, PSI.NodalBalanceActiveConstraint, sys, model)
     PSI.add_constraint_dual!(container, sys, model)
     return
 end

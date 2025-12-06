@@ -14,6 +14,7 @@ using HiGHS
 using JuMP
 const IS = InfrastructureSystems
 const PSI = PowerSimulations
+const PSY = PowerSystems
 
 # Test Packages
 using Test

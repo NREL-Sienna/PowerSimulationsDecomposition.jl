@@ -286,7 +286,15 @@ function instantiate_network_model(model::PSI.DecisionModel{MultiRegionProblem})
     for (id, sub_template) in get_sub_templates(template)
         network_model = PSI.get_network_model(sub_template)
         PSI.set_subsystem!(network_model, id)
-        PSI.instantiate_network_model!(network_model, PSI.get_system(model))
+        branch_models = PSI.get_branch_models(sub_template)
+        number_of_steps = PSI.get_time_steps(PSI.get_optimization_container(model))[end]
+        PSI.instantiate_network_model!(
+            network_model,
+            branch_models,
+            number_of_steps,
+            PSI.get_system(model),
+        )
+
     end
     return
 end
