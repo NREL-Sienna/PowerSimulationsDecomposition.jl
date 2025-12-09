@@ -43,8 +43,12 @@ function _get_reserve_name_for_results(reserve_type::DataType, reserve_name::Str
     return "__" * string(a) * "__" * string(b) * "__" * string(c)
 end
 
-@testset "10 bus; RangeReserveWithDeliverabilityConstraints + AreaPTDFPowerModel (reference): separate reserves" begin
+@testset "10 bus; RampReserveWithDeliverabilityConstraints + AreaPTDFPowerModel (reference): separate reserves" begin
     sys = build_system(PSISystems, "two_area_pjm_DA"; add_reserves=true)
+    # Make feasible by ignoring ramp limits: 
+    for g in get_components(ThermalStandard, sys)
+        set_ramp_limits!(g, nothing)
+    end
     transform_single_time_series!(sys, Hour(24), Hour(1))
 
     # Make Sundance must run with a minimum active power: 
@@ -80,7 +84,7 @@ end
         template,
         ServiceModel(
             VariableReserve{ReserveUp},
-            RangeReserveWithDeliverabilityConstraints,
+            RampReserveWithDeliverabilityConstraints,
             "Reserve1_1",
         ),
     )
@@ -88,7 +92,7 @@ end
         template,
         ServiceModel(
             VariableReserve{ReserveUp},
-            RangeReserveWithDeliverabilityConstraints,
+            RampReserveWithDeliverabilityConstraints,
             "Reserve1_2",
         ),
     )
@@ -154,8 +158,12 @@ end
     end
 end
 
-@testset "10 bus; RangeReserveWithDeliverabilityConstraints + SplitAreaPTDFPowerModel: separate reserves" begin
+@testset "10 bus; RampReserveWithDeliverabilityConstraints + SplitAreaPTDFPowerModel: separate reserves" begin
     sys = build_system(PSISystems, "two_area_pjm_DA"; add_reserves=true)
+    # Make feasible by ignoring ramp limits: 
+    for g in get_components(ThermalStandard, sys)
+        set_ramp_limits!(g, nothing)
+    end
     transform_single_time_series!(sys, Hour(24), Hour(1))
 
     # Make Sundance must run with a minimum active power: 
@@ -209,7 +217,7 @@ end
         template,
         ServiceModel(
             VariableReserve{ReserveUp},
-            RangeReserveWithDeliverabilityConstraints,
+            RampReserveWithDeliverabilityConstraints,
             "Reserve1_1",
         ),
         "a",
@@ -218,7 +226,7 @@ end
         template,
         ServiceModel(
             VariableReserve{ReserveUp},
-            RangeReserveWithDeliverabilityConstraints,
+            RampReserveWithDeliverabilityConstraints,
             "Reserve1_2",
         ),
         "b",
@@ -290,7 +298,7 @@ end
     end
 end
 
-@testset "RTS multi-stage sim w/ RangeReserveWithDeliverabilityConstraints and SplitAreaPTDFPowerModel" begin
+@testset "RTS multi-stage sim w/ RampReserveWithDeliverabilityConstraints and SplitAreaPTDFPowerModel" begin
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     outages_specifications = [(
@@ -318,7 +326,7 @@ end
     for outages_specification in outages_specifications
         outage_generators = outages_specification.outage_generators
         responding_reserves = outages_specification.responding_reserves
-        for i in unique(post_contingency_deployment[!, :DateTime])
+        for i in unique(active_power[!, :DateTime])
             total_reserve_deployment = 0.0
             total_lost_generation = 0.0
             for (reserve_type, reserve_name) in responding_reserves
