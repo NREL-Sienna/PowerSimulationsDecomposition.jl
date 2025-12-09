@@ -131,8 +131,7 @@ end
         end
     end
 
-    flows =
-        read_variable(res, "FlowActivePowerVariable__Line", table_format=TableFormat.WIDE)
+    flows = read_expression(res, "PTDFBranchFlow__Line", table_format=TableFormat.WIDE)
     post_contingency_flows_1 = read_expression(
         res,
         "PostContingencyBranchFlow__VariableReserve__ReserveUp__Reserve1_1",
@@ -270,7 +269,7 @@ end
         end
     end
 
-    flows = get_variable_values(res)[PSI.VariableKey{FlowActivePowerVariable, Line}("")]
+    flows = get_expression_values(res)[PSI.ExpressionKey{PTDFBranchFlow, Line}("")]
     post_contingency_flows_1 = get_expression_values(res)[PSI.ExpressionKey{
         PostContingencyBranchFlow,
         VariableReserve{ReserveUp},
