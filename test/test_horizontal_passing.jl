@@ -78,12 +78,12 @@ end
     results_sub_se_line = get_decision_problem_results(results_se_line, "UC_Subsystem")
     flow_sub_original = read_realized_variable(
         results_sub_original,
-        "FlowActivePowerVariable__MonitoredLine";
+        "PTDFBranchFlow__MonitoredLine";
         table_format=TableFormat.WIDE,
     )
     flow_sub_se_line = read_realized_variable(
         results_sub_se_line,
-        "FlowActivePowerVariable__MonitoredLine";
+        "PTDFBranchFlow__MonitoredLine";
         table_format=TableFormat.WIDE,
     )
 
@@ -125,12 +125,12 @@ end
     results_sub_se_line = get_decision_problem_results(results_se_line, "UC_Subsystem")
     flow_sub_original = read_realized_variable(
         results_sub_original,
-        "FlowActivePowerVariable__MonitoredLine";
+        "PTDFBranchFlow__MonitoredLine";
         table_format=TableFormat.WIDE,
     )
     flow_sub_se_line = read_realized_variable(
         results_sub_se_line,
-        "FlowActivePowerVariable__MonitoredLine";
+        "PTDFBranchFlow__MonitoredLine";
         table_format=TableFormat.WIDE,
     )
 

@@ -6,13 +6,6 @@ function PSI.construct_device!(
     network_model::PSI.NetworkModel{<:PSI.AbstractPTDFModel},
 )
     devices = PSI.get_available_components(model, sys)
-    PSI.add_variables!(
-        container,
-        PSI.FlowActivePowerVariable,
-        network_model,
-        devices,
-        PSI.StaticBranchUnbounded(),
-    )
     PSI.add_parameters!(container, StateEstimationFlows, devices, model)
     PSI.add_feedforward_arguments!(container, model, devices)
     return
@@ -30,7 +23,7 @@ function PSI.add_parameters!(
         container,
         StateEstimationFlows(),
         D,
-        ISOPT.VariableKey{PSI.FlowActivePowerVariable, D}(""),
+        ISOPT.ExpressionKey{PSI.PTDFBranchFlow, D}(""),
         branch_names,
         time_steps,
     )
@@ -125,13 +118,7 @@ function PSI._make_flow_expressions!(
     branch_Type::DataType,
     sys::PSY.System,
 )
-    branch_flow_expr = PSI.add_expression_container!(
-        container,
-        PSI.PTDFBranchFlow(),
-        branch_Type,
-        branches,
-        time_steps,
-    )
+    branch_flow_expr = PSI.get_expression(container, PSI.PTDFBranchFlow(), branch_Type)
 
     jump_model = PSI.get_jump_model(container)
 
@@ -183,8 +170,8 @@ function PSI.add_constraints!(
     ptdf = PSI.get_PTDF_matrix(network_model)
     # This is a workaround to not call the same list comprehension to find
     # The subset of branches of type B in the PTDF
-    flow_variables = PSI.get_variable(container, PSI.FlowActivePowerVariable(), B)
-    branches = flow_variables.axes[1]
+    flows = PSI.get_expression(container, PSI.PTDFBranchFlow(), B)
+    branches = flows.axes[1]
     time_steps = PSI.get_time_steps(container)
     branch_flow = PSI.add_constraints_container!(
         container,
@@ -199,7 +186,6 @@ function PSI.add_constraints!(
         PSI.get_parameter_array(container, StateEstimationInjections(), PSY.ACBus)
 
     state_estimation_flows = PSI.get_parameter(container, StateEstimationFlows(), B)
-    flow_variables = PSI.get_variable(container, PSI.FlowActivePowerVariable(), B)
     branch_flow_expr = PSI._make_flow_expressions!(
         container,
         branches,
@@ -216,7 +202,7 @@ function PSI.add_constraints!(
         for t in time_steps
             branch_flow[name, t] = JuMP.@constraint(
                 jump_model,
-                branch_flow_expr[name, t] - flow_variables[name, t] == 0.0
+                branch_flow_expr[name, t] - flows[name, t] == 0.0
             )
         end
     end
@@ -231,6 +217,7 @@ function PSI.construct_device!(
     network_model::PSI.NetworkModel{<:PSI.AbstractPTDFModel},
 )
     devices = PSI.get_available_components(model, sys)
+    PSI.add_expressions!(container, PSI.PTDFBranchFlow, devices, model, network_model)
     # NOTE - changes required in handling of feedforwards? 
     PSI.add_feedforward_constraints!(container, model, devices)
     PSI.add_constraints!(
