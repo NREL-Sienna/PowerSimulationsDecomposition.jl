@@ -234,8 +234,37 @@ end
 function finalize_template!(template::MultiProblemTemplate, sys::PSY.System)
     PSI.finalize_template!(template.base_template, sys)
     for (ix, sub_template) in get_sub_templates(template)
-        @debug "Finalizing template for sub probem $ix"
-        PSI.finalize_template!(sub_template, sys)
+        finalize_template!(sub_template, sys, ix)
+    end
+    return
+end
+
+function finalize_template!(
+    template::PSI.ProblemTemplate,
+    sys::PSY.System,
+    subsystem::String,
+)
+    _add_modeled_lines!(template, sys, subsystem)
+    PSI._populate_aggregated_service_model!(template, sys)
+    PSI._populate_contributing_devices!(template, sys)
+    PSI._add_services_to_device_model!(template)
+    return
+end
+
+function _add_modeled_lines!(
+    template::PSI.ProblemTemplate,
+    sys::PSY.System,
+    subsystem::String,
+)
+    network_model = PSI.get_network_model(template)
+    branch_models = PSI.get_branch_models(template)
+    for v in values(branch_models)
+        component_type = PSI.get_component_type(v)
+        if isempty(PSY.get_components(component_type, sys; subsystem_name=subsystem))
+            @warn "$component_type is modeled but not in subsystem $subsystem so is not included in modeled_branch_types"
+        else
+            push!(network_model.modeled_branch_types, component_type)
+        end
     end
     return
 end
