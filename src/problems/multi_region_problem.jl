@@ -283,18 +283,18 @@ function handle_initial_conditions!(model::PSI.DecisionModel{MultiRegionProblem}
 
 function instantiate_network_model(model::PSI.DecisionModel{MultiRegionProblem})
     template = PSI.get_template(model)
+    sys = PSI.get_system(model)
     for (id, sub_template) in get_sub_templates(template)
         network_model = PSI.get_network_model(sub_template)
         PSI.set_subsystem!(network_model, id)
         branch_models = PSI.get_branch_models(sub_template)
         number_of_steps = PSI.get_time_steps(PSI.get_optimization_container(model))[end]
-        PSI.instantiate_network_model!(
-            network_model,
-            branch_models,
-            number_of_steps,
-            PSI.get_system(model),
-        )
-
+        for model in values(branch_models)
+            top_level_filter = get(model.attributes, "filter_function", x -> true)
+            model.attributes["filter_function"] =
+                x -> top_level_filter(x) && PSY.has_component(sys, id, x)
+        end
+        PSI.instantiate_network_model!(network_model, branch_models, number_of_steps, sys)
     end
     return
 end
