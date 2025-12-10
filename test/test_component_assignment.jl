@@ -1,4 +1,4 @@
-@testset "10 bus; RampReserveWithDeliverabilityConstraints + SplitAreaPTDFPowerModel: separate reserves" begin
+@testset "Test branches are assigned to subsystems correctly" begin
     sys = build_system(PSISystems, "two_area_pjm_DA"; add_reserves=true)
     transform_single_time_series!(sys, Hour(24), Hour(1))
 
