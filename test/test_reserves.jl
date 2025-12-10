@@ -107,4 +107,3 @@ end
     moi_tests(jump_problem_dict["a"], 10470, 0, 1728, 864, 2640, true)
     moi_tests(jump_problem_dict["b"], 18348, 0, 3456, 1776, 5280, true)
 end
-
