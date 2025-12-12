@@ -1,11 +1,3 @@
-HiGHS_optimizer_small_gap = JuMP.optimizer_with_attributes(
-    HiGHS.Optimizer,
-    "time_limit" => 100.0,
-    "random_seed" => 12345,
-    "mip_rel_gap" => 0.001,
-    "log_to_console" => false,
-)
-
 #Utility function for testing for adding outage data to generators and reserves:
 function add_outages_to_systems!(
     systems::Vector{System},

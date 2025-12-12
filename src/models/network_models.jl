@@ -161,6 +161,7 @@ function PSI.initialize_system_expressions!(
     container::PSI.OptimizationContainer,
     network_model::PSI.NetworkModel{SplitAreaPTDFPowerModel},
     subnetworks::Dict{Int, Set{Int}},
+    ::PSI.BranchModelContainer,
     system::PSY.System,
     bus_reduction_map::Dict{Int64, Set{Int64}},
 )
