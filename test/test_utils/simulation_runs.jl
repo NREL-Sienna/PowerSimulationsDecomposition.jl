@@ -28,8 +28,9 @@ function run_rts_multi_stage_decomposition_simulation(
 
     for b in modeled_lines
         l = get_component(ACBranch, sys2, b)
-        PowerSystems.add_component_to_subsystem!(sys2, "a", l)
-        #PowerSystems.add_component_to_subsystem!(sys2, "b", l)
+        to_bus_area = get_name(get_area(get_to(get_arc(l))))
+        PowerSystems.add_component_to_subsystem!(sys2, area_subsystem_map[to_bus_area], l)
+        @info "Assigning line $(get_name(l)) to subsystem $(area_subsystem_map[to_bus_area])"
     end
     for sys in systems
         add_interchanges!(sys)
