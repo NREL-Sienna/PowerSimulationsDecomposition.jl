@@ -47,7 +47,7 @@ function PSI._make_flow_expressions!(
 )
     # NOTE - can alternatively avoid passing the system by ensuring the parameter container for state estimation injections
     # is ordered by bus number as is the case for the Active Power Balance expressions
-    all_buses = PSY.get_components(
+    all_buses = PSY.get_available_components(
         x -> PSY.get_bustype(x) != PSY.ACBusTypes.ISOLATED,
         PSY.ACBus,
         sys;

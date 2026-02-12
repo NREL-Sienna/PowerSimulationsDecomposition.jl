@@ -78,7 +78,7 @@ function PSI.add_to_expression!(
     parameter_array =
         PSI.get_parameter_array(container, StateEstimationInjections(), PSY.ACBus)
     subsys = PSI.get_subsystem(network_model)
-    all_buses = PSY.get_components(
+    all_buses = PSY.get_available_components(
         x -> PSY.get_bustype(x) != PSY.ACBusTypes.ISOLATED,
         PSY.ACBus,
         sys;
@@ -129,7 +129,7 @@ function PSI.add_parameters!(
     time_steps = PSI.get_time_steps(container)
     subsys = PSI.get_subsystem(network_model)
 
-    all_buses = PSY.get_components(
+    all_buses = PSY.get_available_components(
         x -> PSY.get_bustype(x) != PSY.ACBusTypes.ISOLATED,
         PSY.ACBus,
         sys;

@@ -263,7 +263,9 @@ function _add_modeled_ac_branches!(
         if !(component_type <: PSY.ACTransmission)
             continue
         end
-        if isempty(PSY.get_components(component_type, sys; subsystem_name=subsystem))
+        if isempty(
+            PSY.get_available_components(component_type, sys; subsystem_name=subsystem),
+        )
             @warn "$component_type is modeled but not in subsystem $subsystem so is not included in modeled_ac_branch_types"
         else
             push!(network_model.modeled_ac_branch_types, component_type)

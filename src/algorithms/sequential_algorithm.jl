@@ -22,12 +22,12 @@ function build_main_problem!(
 )
     device_models_dict = keys(PSI.get_device_models(template))
     for k in keys(container.subproblems)
-        subsystem_buses = PSY.get_components(PSY.ACBus, sys; subsystem_name=k)
+        subsystem_buses = PSY.get_available_components(PSY.ACBus, sys; subsystem_name=k)
         subsystem_bus_nos = [PSY.get_number(b) for b in subsystem_buses]
         container.subproblem_bus_map[k] = subsystem_bus_nos
         subsystem_static_injectors =
-            PSY.get_components(PSY.StaticInjection, sys; subsystem_name=k)
-        subsystem_buses = PSY.get_components(PSY.ACBus, sys; subsystem_name=k)
+            PSY.get_available_components(PSY.StaticInjection, sys; subsystem_name=k)
+        subsystem_buses = PSY.get_available_components(PSY.ACBus, sys; subsystem_name=k)
         for si in subsystem_static_injectors
             if Symbol(typeof(si)) ∈ device_models_dict
                 if !(PSY.get_bus(si) ∈ subsystem_buses)
@@ -39,7 +39,8 @@ function build_main_problem!(
                 end
             end
         end
-        subsystem_hvdcs = PSY.get_components(PSY.TwoTerminalHVDC, sys; subsystem_name=k)
+        subsystem_hvdcs =
+            PSY.get_available_components(PSY.TwoTerminalHVDC, sys; subsystem_name=k)
         if _has_hvdc_model(template)
             for hvdc in subsystem_hvdcs
                 from_bus_no = PSY.get_number(PSY.get_from(PSY.get_arc(hvdc)))
