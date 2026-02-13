@@ -129,13 +129,7 @@ function PSI.add_parameters!(
     time_steps = PSI.get_time_steps(container)
     subsys = PSI.get_subsystem(network_model)
 
-    all_buses = PSY.get_available_components(
-        x -> PSY.get_bustype(x) != PSY.ACBusTypes.ISOLATED,
-        PSY.ACBus,
-        sys;
-    )
-
-    bus_numbers = [string(PSY.get_number(b)) for b in all_buses]
+    bus_numbers = string.(PNM.get_bus_axis(PSI.get_PTDF_matrix(network_model)))
     @assert !isempty(bus_numbers)
 
     parameter_container = PSI.add_param_container!(
