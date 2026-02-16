@@ -96,8 +96,13 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
                     dst[1:length(axes(src)[1])] = data
                 elseif num_dims == 2
                     columns = _get_main_container_columns(container, k, key, src)
-                    len = length(axes(src)[2])
-                    dst[columns, 1:len] = PSI.jump_value.(src[columns, :])
+                    for col in columns
+                        for t in axes(src)[2]
+                            if isassigned(src[col, t])
+                                dst[col, t] = PSI.jump_value.(src[col, t])
+                            end 
+                        end 
+                    end 
                 elseif num_dims == 3
                     axis1 = axes(src)[1]
                     axis2 = axes(src)[2]
@@ -110,6 +115,10 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
     end
     return
 end
+
+Base.isassigned(::Float64) = true 
+Base.isassigned(::JuMP.AbstractJuMPScalar) = true 
+Base.isassigned(::JuMP.ConstraintRef) = true 
 
 function _get_main_container_columns(
     container::MultiOptimizationContainer,
