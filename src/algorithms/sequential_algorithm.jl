@@ -98,7 +98,7 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
                     columns = _get_main_container_columns(container, k, key, src)
                     for col in columns
                         for t in axes(src)[2]
-                            if isassigned(src[col, t])
+                            if isassigned(src, col, t)
                                 dst[col, t] = PSI.jump_value.(src[col, t])
                             end 
                         end 
@@ -115,10 +115,6 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
     end
     return
 end
-
-Base.isassigned(::Float64) = true 
-Base.isassigned(::JuMP.AbstractJuMPScalar) = true 
-Base.isassigned(::JuMP.ConstraintRef) = true 
 
 function _get_main_container_columns(
     container::MultiOptimizationContainer,
