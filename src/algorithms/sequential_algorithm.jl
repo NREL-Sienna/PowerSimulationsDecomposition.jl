@@ -83,7 +83,7 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
             subproblem_data_field = getproperty(subproblem, field)
             main_container_data_field = getproperty(container, field)
             for (key, src) in subproblem_data_field
-                @warn key   
+                @info "writing $key to main container"   
                 if src isa JuMP.Containers.SparseAxisArray
                     @debug "Skip SparseAxisArray" field key
                     continue
@@ -91,18 +91,21 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
                 num_dims = ndims(src)
                 dst = main_container_data_field[key]
                 if num_dims == 1
-                    data = nothing
-                    data = PSI.jump_value.(src)
-                    dst[1:length(axes(src)[1])] = data
+                    columns = _get_main_container_columns(container, k, key, src)
+                    for col in columns
+                        if isassigned(src, col)
+                            dst[col] = PSI.jump_value.(src[col])
+                        end
+                    end
                 elseif num_dims == 2
                     columns = _get_main_container_columns(container, k, key, src)
                     for col in columns
                         for t in axes(src)[2]
                             if isassigned(src, col, t)
                                 dst[col, t] = PSI.jump_value.(src[col, t])
-                            end 
-                        end 
-                    end 
+                            end
+                        end
+                    end
                 elseif num_dims == 3
                     axis1 = axes(src)[1]
                     axis2 = axes(src)[2]

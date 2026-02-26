@@ -9,6 +9,7 @@ using HydroPowerSimulations
 import PowerSystemCaseBuilder: PSITestSystems
 using PowerNetworkMatrices
 using StorageSystemsSimulations
+using TimeSeries
 using Dates
 using HiGHS
 using JuMP

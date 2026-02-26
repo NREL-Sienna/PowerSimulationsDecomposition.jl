@@ -5,6 +5,7 @@ function run_rts_multi_stage_decomposition_simulation(
     monitored_line_formulations=[StaticBranchUnbounded, StaticBranchUnbounded],
     use_emulator=false,
     add_reserves=false,
+    add_hydro=false,
     in_memory=false,
 )
     modeled_lines = ["CA-1", "CB-1", "AB1", "A28"]
@@ -40,6 +41,8 @@ function run_rts_multi_stage_decomposition_simulation(
     template_uc = ProblemTemplate(NetworkModel(AreaPTDFPowerModel; use_slacks=true))
     set_device_model!(template_uc, ThermalStandard, ThermalBasicUnitCommitment)
     set_device_model!(template_uc, PowerLoad, StaticPowerLoad)
+    add_hydro &&
+        set_device_model!(template_uc, HydroDispatch, HydroDispatchRunOfRiverBudget)
     set_device_model!(template_uc, AreaInterchange, StaticBranch)
     set_device_model!(
         template_uc,
@@ -93,6 +96,8 @@ function run_rts_multi_stage_decomposition_simulation(
     )
     set_device_model!(template_uc2, ThermalStandard, ThermalBasicUnitCommitment)
     set_device_model!(template_uc2, PowerLoad, StaticPowerLoad)
+    add_hydro &&
+        set_device_model!(template_uc2, HydroDispatch, HydroDispatchRunOfRiverBudget)
     set_device_model!(template_uc2, AreaInterchange, StaticBranch)
     set_device_model!(
         template_uc2,
@@ -154,6 +159,8 @@ function run_rts_multi_stage_decomposition_simulation(
         template_em = ProblemTemplate(NetworkModel(AreaPTDFPowerModel; use_slacks=true))
         set_device_model!(template_em, ThermalStandard, ThermalBasicUnitCommitment)
         set_device_model!(template_em, PowerLoad, StaticPowerLoad)
+        add_hydro &&
+            set_device_model!(template_em, HydroDispatch, HydroDispatchRunOfRiverBudget)
         set_device_model!(template_em, AreaInterchange, StaticBranch)
         set_device_model!(
             template_em,
