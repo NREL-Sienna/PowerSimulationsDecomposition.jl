@@ -12,5 +12,5 @@
         add_reserves=true,
         add_hydro=true,
     )
-    @test isa(results, SimulationResults) 
+    @test isa(results, SimulationResults)
 end

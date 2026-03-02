@@ -275,19 +275,17 @@ function _update_parameter_values!(
 ) where {T <: Union{JuMP.VariableRef, Float64}}
     state = PSI.get_system_states(simulation_state)
     state_values = PSI.get_dataset_values(state, PSI.get_attribute_key(attributes))
-
     if !isfinite(first(state_values))
         @warn "first value not present, updating state estimation injections from decision state"
         state = PSI.get_decision_states(simulation_state)
         state_values = PSI.get_dataset_values(state, PSI.get_attribute_key(attributes))
+    elseif size(parameter_array)[2] > size(state_values)[2]
+        @warn "Cannot update; state estimation injection parameter has more timesteps than the system state, updating state estimation injections from decision state"
+        state = PSI.get_decision_states(simulation_state)
+        state_values = PSI.get_dataset_values(state, PSI.get_attribute_key(attributes))
+    else
+        @info "Updating state estimation injection parameters from system state"
     end
-
-    if size(parameter_array)[2] > size(state_values)[2]
-        error(
-            "Cannot update: state estimation injection parameter has more timesteps than the state used for updating.",
-        )
-    end
-
     component_names, time = axes(parameter_array)
     for t in time
         for name in component_names
