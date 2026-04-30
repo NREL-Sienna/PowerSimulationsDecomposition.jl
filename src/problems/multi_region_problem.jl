@@ -8,6 +8,7 @@ function PSI.DecisionModel{MultiRegionProblem}(
 )
     name = Symbol(get(kwargs, :name, nameof(MultiRegionProblem)))
     settings = PSI.Settings(sys; [k for k in kwargs if first(k) ∉ [:name]]...)
+    PSI.auto_transform_time_series!(sys, settings)
     internal = ISOPT.ModelInternal(
         MultiOptimizationContainer(
             SequentialAlgorithm,
@@ -18,7 +19,6 @@ function PSI.DecisionModel{MultiRegionProblem}(
         ),
     )
     template_ = deepcopy(template)
-
     finalize_template!(template_, sys)
 
     model = PSI.DecisionModel{MultiRegionProblem}(
@@ -124,7 +124,6 @@ function _make_joint_axes!(dim1::Set{UnitRange{Int}})
 end
 
 function _make_joint_axes!(dim1::Set{String})
-    @error dim1
     return (collect(dim1),)
 end
 
@@ -299,10 +298,6 @@ function instantiate_network_model(model::PSI.DecisionModel{MultiRegionProblem})
     return
 end
 
-function PSI.serialize_problem(
-    model::PSI.DecisionModel{MultiRegionProblem};
-    optimizer::Nothing,
-) end
 
 function PSI.build_model!(model::PSI.DecisionModel{MultiRegionProblem})
     build_impl!(

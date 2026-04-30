@@ -1,8 +1,7 @@
 @testset "Test vertical passing without emulator" begin
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results, sim = run_rts_multi_stage_decomposition_simulation(
-        [sys, sys2];
+        sys;
         NT=5,
         mode="vertical",
         monitored_line_formulations=[StaticBranchUnbounded, StaticBranchUnbounded],
@@ -75,18 +74,16 @@ end
 
 @testset "Vertical passing; compare branch models without emulator" begin
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results_original, sim_original = run_rts_multi_stage_decomposition_simulation(
-        [sys, sys2];
+        sys;
         NT=5,
         mode="vertical",
         monitored_line_formulations=[StaticBranchUnbounded, StaticBranchUnbounded],
         use_emulator=false,
     )
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results_se_line, sim_se_line = run_rts_multi_stage_decomposition_simulation(
-        [sys, sys2];
+        sys;
         NT=5,
         mode="vertical",
         monitored_line_formulations=[

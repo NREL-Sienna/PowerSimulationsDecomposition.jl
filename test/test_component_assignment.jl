@@ -1,6 +1,5 @@
 @testset "Test branches are assigned to subsystems correctly" begin
     sys = build_system(PSISystems, "two_area_pjm_DA"; add_reserves=true)
-    transform_single_time_series!(sys, Hour(24), Hour(1))
 
     area_subsystem_map = Dict("Area1" => "a", "Area2" => "b")
     make_subsystems!(sys, area_subsystem_map)
@@ -19,12 +18,15 @@
     set_device_model!(template, ThermalStandard, ThermalBasicDispatch)
     set_device_model!(template, PowerLoad, StaticPowerLoad)
     set_device_model!(template, DeviceModel(MonitoredLine, StaticBranch))
-    set_device_model!(template, Line, StaticBranch)
+    set_device_model!(template, DeviceModel(Line, StaticBranch))
 
     problem = DecisionModel(
         MultiRegionProblem,
         template,
         sys;
+        horizon = Hour(24),
+        interval = Hour(1),
+        resolution = Hour(1),
         name="UC_Subsystem",
         optimizer=HiGHS_optimizer_small_gap,
     )
@@ -57,6 +59,6 @@
     )[1] == 1
     @test !haskey(
         problem.internal.container.subproblems["b"].constraints,
-        [PSI.ConstraintKey{FlowRateConstraint, MonitoredLine}("lb")],
+        PSI.ConstraintKey{FlowRateConstraint, MonitoredLine}("lb"),
     )
 end

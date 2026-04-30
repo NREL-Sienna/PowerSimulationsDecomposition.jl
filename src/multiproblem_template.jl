@@ -245,9 +245,30 @@ function finalize_template!(
     subsystem::String,
 )
     _add_modeled_ac_branches!(template, sys, subsystem)
+    _check_for_empty_device_models!(template, sys, subsystem)
     PSI._populate_aggregated_service_model!(template, sys)
     PSI._populate_contributing_devices!(template, sys)
     PSI._add_services_to_device_model!(template)
+    return
+end
+
+function _check_for_empty_device_models!(
+    template::PSI.ProblemTemplate,
+    sys::PSY.System,
+    subsystem::String,
+)
+    for device_model in values(PSI.get_device_models(template))
+        component_type = PSI.get_component_type(device_model)
+        components = PSY.get_available_components(
+            component_type,
+            sys;
+            subsystem_name=subsystem,
+        )
+        if isempty(components)
+            pop!(PSI.get_device_models(template), Symbol(component_type))
+            @warn "Device model for $component_type is included in the main template but there are no available components of this type in subsystem $subsystem and will be removed from the template"
+        end
+    end
     return
 end
 
@@ -260,15 +281,15 @@ function _add_modeled_ac_branches!(
     branch_models = PSI.get_branch_models(template)
     for v in values(branch_models)
         component_type = PSI.get_component_type(v)
-        if !(component_type <: PSY.ACTransmission)
-            continue
-        end
         if isempty(
             PSY.get_available_components(component_type, sys; subsystem_name=subsystem),
         )
-            @warn "$component_type is modeled but not in subsystem $subsystem so is not included in modeled_ac_branch_types"
+            pop!(branch_models, Symbol(component_type))
+            @warn "$component_type is modeled but not in subsystem $subsystem so removed from the template"
         else
-            push!(network_model.modeled_ac_branch_types, component_type)
+            if (component_type <: PSY.ACTransmission)
+                push!(network_model.modeled_ac_branch_types, component_type)
+            end 
         end
     end
     return

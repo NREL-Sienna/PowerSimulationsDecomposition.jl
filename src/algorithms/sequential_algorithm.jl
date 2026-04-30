@@ -83,7 +83,7 @@ function write_results_to_main_container(container::MultiOptimizationContainer)
             subproblem_data_field = getproperty(subproblem, field)
             main_container_data_field = getproperty(container, field)
             for (key, src) in subproblem_data_field
-                @info "writing $key to main container"
+                @debug "writing $key to main container"
                 if src isa JuMP.Containers.SparseAxisArray
                     @debug "Skip SparseAxisArray" field key
                     continue

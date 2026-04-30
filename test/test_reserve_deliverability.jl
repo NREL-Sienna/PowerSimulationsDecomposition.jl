@@ -41,7 +41,6 @@ end
     for g in get_components(ThermalStandard, sys)
         set_ramp_limits!(g, nothing)
     end
-    transform_single_time_series!(sys, Hour(24), Hour(1))
 
     # Make Sundance must run with a minimum active power: 
     set_must_run!(get_component(ThermalStandard, sys, "Sundance_1"), true)
@@ -91,6 +90,9 @@ end
     problem = DecisionModel(
         template,
         sys;
+        horizon = Hour(24),
+        interval = Hour(1),
+        resolution = Hour(1),
         name="UC_Subsystem",
         optimizer=HiGHS_optimizer_small_gap,
     )
@@ -155,7 +157,6 @@ end
     for g in get_components(ThermalStandard, sys)
         set_ramp_limits!(g, nothing)
     end
-    transform_single_time_series!(sys, Hour(24), Hour(1))
 
     # Make Sundance must run with a minimum active power: 
     set_must_run!(get_component(ThermalStandard, sys, "Sundance_1"), true)
@@ -226,6 +227,9 @@ end
         MultiRegionProblem,
         template,
         sys;
+        horizon = Hour(24),
+        interval = Hour(1),
+        resolution = Hour(1),
         name="UC_Subsystem",
         optimizer=HiGHS_optimizer_small_gap,
     )
@@ -291,14 +295,13 @@ end
 
 @testset "RTS multi-stage sim w/ RampReserveWithDeliverabilityConstraints and SplitAreaPTDFPowerModel" begin
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     outages_specifications = [(
         outage_generators=["313_CC_1"],
         responding_reserves=Dict(PSY.VariableReserve{ReserveUp} => "Spin_Up_R3"),
     )]
-    add_outages_to_systems!([sys, sys2], outages_specifications)
+    add_outages_to_systems!([sys], outages_specifications)
     results, sim = run_rts_multi_stage_decomposition_simulation(
-        [sys, sys2];
+        sys;
         NT=5,
         mode="vertical",
         monitored_line_formulations=[StaticBranchUnbounded, StaticBranchUnbounded],

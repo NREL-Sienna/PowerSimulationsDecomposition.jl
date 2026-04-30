@@ -1,9 +1,8 @@
 
 @testset "Test horizontal passing without emulator" begin
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results, _ = run_rts_multi_stage_decomposition_simulation(
-        [sys, sys2];
+        sys;
         NT=5,
         mode="horizontal",
         monitored_line_formulations=[StaticBranchUnbounded, StaticBranchUnbounded],
@@ -54,18 +53,16 @@ end
 
 @testset "Horizontal passing; compare branch models without emulator" begin
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results_original, _ = run_rts_multi_stage_decomposition_simulation(
-        [sys, sys2];
+        sys;
         NT=5,
         mode="horizontal",
         monitored_line_formulations=[StaticBranchUnbounded, StaticBranchUnbounded],
         use_emulator=false,
     )
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results_se_line, _ = run_rts_multi_stage_decomposition_simulation(
-        [sys, sys2];
+        sys;
         NT=5,
         mode="horizontal",
         monitored_line_formulations=[
@@ -94,10 +91,8 @@ end
 
 @testset "Horizontal passing; compare branch models with emulator" begin
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys3 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results_original, _ = run_rts_multi_stage_decomposition_simulation(
-        [sys, sys2, sys3];
+        sys;
         NT=5,
         mode="horizontal",
         monitored_line_formulations=[
@@ -108,10 +103,8 @@ end
         use_emulator=true,
     )
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys3 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results_se_line, _ = run_rts_multi_stage_decomposition_simulation(
-        [sys, sys2, sys3];
+        sys;
         NT=5,
         mode="horizontal",
         monitored_line_formulations=[
