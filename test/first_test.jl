@@ -125,9 +125,9 @@ model = DecisionModel(
         "MIPRELSTOP" => 0.01,       # Set the relative mip gap tolerance
         "MAXMEMORYSOFT" => 600000,   # Set the maximum amount of memory the solver can use (in MB)
     ),
-    horizon = Hour(48),
-    interval = Hour(24),
-    resolution = Hour(1),
+    horizon=Hour(48),
+    interval=Hour(24),
+    resolution=Hour(1),
     initialize_model=true,
     optimizer_solve_log_print=true,
     direct_mode_optimizer=true,

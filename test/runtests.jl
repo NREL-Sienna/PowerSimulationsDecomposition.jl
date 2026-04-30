@@ -40,7 +40,7 @@ const LOG_LEVELS = Dict(
     "Error" => Logging.Error,
 )
 const DISABLED_TEST_FILES = [  # Can generate with ls -1 test | grep "test_.*.jl"
-    "test_reserve_deliverability.jl"
+    "test_reserve_deliverability.jl",
 ]
 
 """

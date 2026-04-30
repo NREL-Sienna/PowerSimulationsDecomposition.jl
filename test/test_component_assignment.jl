@@ -24,9 +24,9 @@
         MultiRegionProblem,
         template,
         sys;
-        horizon = Hour(24),
-        interval = Hour(1),
-        resolution = Hour(1),
+        horizon=Hour(24),
+        interval=Hour(1),
+        resolution=Hour(1),
         name="UC_Subsystem",
         optimizer=HiGHS_optimizer_small_gap,
     )

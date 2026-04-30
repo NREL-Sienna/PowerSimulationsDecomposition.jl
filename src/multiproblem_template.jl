@@ -259,11 +259,8 @@ function _check_for_empty_device_models!(
 )
     for device_model in values(PSI.get_device_models(template))
         component_type = PSI.get_component_type(device_model)
-        components = PSY.get_available_components(
-            component_type,
-            sys;
-            subsystem_name=subsystem,
-        )
+        components =
+            PSY.get_available_components(component_type, sys; subsystem_name=subsystem)
         if isempty(components)
             pop!(PSI.get_device_models(template), Symbol(component_type))
             @warn "Device model for $component_type is included in the main template but there are no available components of this type in subsystem $subsystem and will be removed from the template"
@@ -289,7 +286,7 @@ function _add_modeled_ac_branches!(
         else
             if (component_type <: PSY.ACTransmission)
                 push!(network_model.modeled_ac_branch_types, component_type)
-            end 
+            end
         end
     end
     return

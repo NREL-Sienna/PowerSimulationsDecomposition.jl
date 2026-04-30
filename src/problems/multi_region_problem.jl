@@ -298,7 +298,6 @@ function instantiate_network_model(model::PSI.DecisionModel{MultiRegionProblem})
     return
 end
 
-
 function PSI.build_model!(model::PSI.DecisionModel{MultiRegionProblem})
     build_impl!(
         PSI.get_optimization_container(model),
