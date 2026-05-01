@@ -17,9 +17,6 @@
     @test !isempty(template.sub_templates["b"].services)
 end
 
-# TODO -unexpected change in number of variables between psy versions.
-#psy4->psy5 adds 36 variables to subproblem a 
-#psy4 -> psy5 adds 72 variables to subproblem b  
 @testset "MOI test - w/out reserves" begin
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     area_subsystem_map = Dict("1" => "a", "2" => "b", "3" => "b")
