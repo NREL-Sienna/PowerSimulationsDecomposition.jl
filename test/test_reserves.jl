@@ -23,7 +23,6 @@ end
     make_subsystems!(sys, area_subsystem_map)
     template = MultiProblemTemplate(NetworkModel(SplitAreaPTDFPowerModel), ["a", "b"])
     set_device_model!(template, ThermalStandard, ThermalBasicUnitCommitment)
-    set_service_model!(template, VariableReserve{ReserveUp}, RangeReserve)
     problem = DecisionModel(
         MultiRegionProblem,
         template,
@@ -34,8 +33,8 @@ end
     build_out = build!(problem; output_dir=mktempdir())
     @test build_out == PowerSimulations.ModelBuildStatus.BUILT
     jump_problem_dict = get_jump_models(problem)
-    moi_tests(jump_problem_dict["a"], 10434, 0, 1728, 864, 2640, true)
-    moi_tests(jump_problem_dict["b"], 17364, 0, 3456, 1728, 5280, true)
+    moi_tests(jump_problem_dict["a"], 10470, 0, 1728, 864, 2640, true)
+    moi_tests(jump_problem_dict["b"], 17436, 0, 3456, 1728, 5280, true)
 end
 
 @testset "MOI test - reserves in A" begin
@@ -49,6 +48,8 @@ end
             end
         end
     end
+    remove_component!(sys, get_component(VariableReserve, sys, "Reg_Up"))
+    remove_component!(sys, get_component(VariableReserve, sys, "Reg_Down"))
     area_subsystem_map = Dict("1" => "a", "2" => "b", "3" => "b")
     make_subsystems!(sys, area_subsystem_map)
     r1 = get_component(VariableReserve, sys, "Spin_Up_R1")
@@ -66,8 +67,8 @@ end
     build_out = build!(problem; output_dir=mktempdir())
     @test build_out == PowerSimulations.ModelBuildStatus.BUILT
     jump_problem_dict = get_jump_models(problem)
-    moi_tests(jump_problem_dict["a"], 11250, 0, 1728, 912, 2640, true)
-    moi_tests(jump_problem_dict["b"], 17364, 0, 3456, 1728, 5280, true)
+    moi_tests(jump_problem_dict["a"], 11286, 0, 1728, 912, 2640, true)
+    moi_tests(jump_problem_dict["b"], 17436, 0, 3456, 1728, 5280, true)
 end
 
 @testset "MOI test - reserves in B" begin
@@ -81,6 +82,8 @@ end
             end
         end
     end
+    remove_component!(sys, get_component(VariableReserve, sys, "Reg_Up"))
+    remove_component!(sys, get_component(VariableReserve, sys, "Reg_Down"))
     area_subsystem_map = Dict("1" => "a", "2" => "b", "3" => "b")
     make_subsystems!(sys, area_subsystem_map)
     r2 = get_component(VariableReserve, sys, "Spin_Up_R2")
@@ -98,6 +101,6 @@ end
     build_out = build!(problem; output_dir=mktempdir())
     @test build_out == PowerSimulations.ModelBuildStatus.BUILT
     jump_problem_dict = get_jump_models(problem)
-    moi_tests(jump_problem_dict["a"], 10434, 0, 1728, 864, 2640, true)
-    moi_tests(jump_problem_dict["b"], 18276, 0, 3456, 1776, 5280, true)
+    moi_tests(jump_problem_dict["a"], 10470, 0, 1728, 864, 2640, true)
+    moi_tests(jump_problem_dict["b"], 18348, 0, 3456, 1776, 5280, true)
 end

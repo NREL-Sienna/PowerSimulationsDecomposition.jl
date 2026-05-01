@@ -42,7 +42,6 @@ function PSI.construct_network!(
         model,
     )
     PSI.add_constraints!(container, PSI.CopperPlateBalanceConstraint, sys, model)
-    PSI.add_constraints!(container, PSI.NodalBalanceActiveConstraint, sys, model)
     PSI.add_constraint_dual!(container, sys, model)
     return
 end
@@ -79,7 +78,7 @@ function PSI.add_to_expression!(
     parameter_array =
         PSI.get_parameter_array(container, StateEstimationInjections(), PSY.ACBus)
     subsys = PSI.get_subsystem(network_model)
-    all_buses = PSY.get_components(
+    all_buses = PSY.get_available_components(
         x -> PSY.get_bustype(x) != PSY.ACBusTypes.ISOLATED,
         PSY.ACBus,
         sys;
@@ -88,12 +87,12 @@ function PSI.add_to_expression!(
     # These are the buses not in the same subsystem as the one being built
 
     expression = PSI.get_expression(container, PSI.ActivePowerBalance(), PSY.ACBus)
-    radial_network_reduction = PSI.get_radial_network_reduction(network_model)
+    nrd = PSI.get_network_reduction(network_model)
     for b in all_buses, t in PSI.get_time_steps(container)
         if PSY.has_component(sys, subsys, b)
             continue
         end
-        bus_no = PNM.get_mapped_bus_number(radial_network_reduction, b)
+        bus_no = PNM.get_mapped_bus_number(nrd, b)
         PSI._add_to_jump_expression!(
             expression[bus_no, t],
             parameter_array[string(bus_no), t],
@@ -130,13 +129,7 @@ function PSI.add_parameters!(
     time_steps = PSI.get_time_steps(container)
     subsys = PSI.get_subsystem(network_model)
 
-    all_buses = PSY.get_components(
-        x -> PSY.get_bustype(x) != PSY.ACBusTypes.ISOLATED,
-        PSY.ACBus,
-        sys;
-    )
-
-    bus_numbers = [string(PSY.get_number(b)) for b in all_buses]
+    bus_numbers = string.(PNM.get_bus_axis(PSI.get_PTDF_matrix(network_model)))
     @assert !isempty(bus_numbers)
 
     parameter_container = PSI.add_param_container!(
@@ -162,6 +155,7 @@ function PSI.initialize_system_expressions!(
     container::PSI.OptimizationContainer,
     network_model::PSI.NetworkModel{SplitAreaPTDFPowerModel},
     subnetworks::Dict{Int, Set{Int}},
+    ::PSI.BranchModelContainer,
     system::PSY.System,
     bus_reduction_map::Dict{Int64, Set{Int64}},
 )
@@ -198,12 +192,12 @@ function PSI.add_to_expression!(
     variable = PSI.get_variable(container, U(), V)
     area_expr = PSI.get_expression(container, T(), PSY.Area)
     nodal_expr = PSI.get_expression(container, T(), PSY.ACBus)
-    radial_network_reduction = PSI.get_radial_network_reduction(network_model)
+    nrd = PSI.get_network_reduction(network_model)
     for d in devices
         name = PSY.get_name(d)
         device_bus = PSY.get_bus(d)
         area_name = PSY.get_name(PSY.get_area(device_bus))
-        bus_no = PNM.get_mapped_bus_number(radial_network_reduction, device_bus)
+        bus_no = PNM.get_mapped_bus_number(nrd, device_bus)
         for t in PSI.get_time_steps(container)
             PSI._add_to_jump_expression!(
                 area_expr[area_name, t],
@@ -281,19 +275,17 @@ function _update_parameter_values!(
 ) where {T <: Union{JuMP.VariableRef, Float64}}
     state = PSI.get_system_states(simulation_state)
     state_values = PSI.get_dataset_values(state, PSI.get_attribute_key(attributes))
-
     if !isfinite(first(state_values))
         @warn "first value not present, updating state estimation injections from decision state"
         state = PSI.get_decision_states(simulation_state)
         state_values = PSI.get_dataset_values(state, PSI.get_attribute_key(attributes))
+    elseif size(parameter_array)[2] > size(state_values)[2]
+        @warn "Cannot update; state estimation injection parameter has more timesteps than the system state, updating state estimation injections from decision state"
+        state = PSI.get_decision_states(simulation_state)
+        state_values = PSI.get_dataset_values(state, PSI.get_attribute_key(attributes))
+    else
+        @info "Updating state estimation injection parameters from system state"
     end
-
-    if size(parameter_array)[2] > size(state_values)[2]
-        error(
-            "Cannot update: state estimation injection parameter has more timesteps than the state used for updating.",
-        )
-    end
-
     component_names, time = axes(parameter_array)
     for t in time
         for name in component_names

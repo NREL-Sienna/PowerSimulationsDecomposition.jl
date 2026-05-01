@@ -215,11 +215,79 @@ function PSI.set_service_model!(
     return
 end
 
+# Set service model for only one subsystem:
+function PSI.set_service_model!(
+    template::MultiProblemTemplate,
+    model::PSI.ServiceModel{<:PSY.Service, <:PSI.AbstractServiceFormulation},
+    subsystem_id::String,
+)
+    PSI.set_service_model!(template.base_template, model)
+    for (id, sub_template) in get_sub_templates(template)
+        if id == subsystem_id
+            PSI.set_subsystem!(model, id)
+            PSI.set_service_model!(sub_template, deepcopy(model))
+        end
+    end
+    return
+end
+
 function finalize_template!(template::MultiProblemTemplate, sys::PSY.System)
     PSI.finalize_template!(template.base_template, sys)
     for (ix, sub_template) in get_sub_templates(template)
-        @debug "Finalizing template for sub probem $ix"
-        PSI.finalize_template!(sub_template, sys)
+        finalize_template!(sub_template, sys, ix)
+    end
+    return
+end
+
+function finalize_template!(
+    template::PSI.ProblemTemplate,
+    sys::PSY.System,
+    subsystem::String,
+)
+    _add_modeled_ac_branches!(template, sys, subsystem)
+    _check_for_empty_device_models!(template, sys, subsystem)
+    PSI._populate_aggregated_service_model!(template, sys)
+    PSI._populate_contributing_devices!(template, sys)
+    PSI._add_services_to_device_model!(template)
+    return
+end
+
+function _check_for_empty_device_models!(
+    template::PSI.ProblemTemplate,
+    sys::PSY.System,
+    subsystem::String,
+)
+    for device_model in values(PSI.get_device_models(template))
+        component_type = PSI.get_component_type(device_model)
+        components =
+            PSY.get_available_components(component_type, sys; subsystem_name=subsystem)
+        if isempty(components)
+            pop!(PSI.get_device_models(template), Symbol(component_type))
+            @warn "Device model for $component_type is included in the main template but there are no available components of this type in subsystem $subsystem and will be removed from the template"
+        end
+    end
+    return
+end
+
+function _add_modeled_ac_branches!(
+    template::PSI.ProblemTemplate,
+    sys::PSY.System,
+    subsystem::String,
+)
+    network_model = PSI.get_network_model(template)
+    branch_models = PSI.get_branch_models(template)
+    for v in values(branch_models)
+        component_type = PSI.get_component_type(v)
+        if isempty(
+            PSY.get_available_components(component_type, sys; subsystem_name=subsystem),
+        )
+            pop!(branch_models, Symbol(component_type))
+            @warn "$component_type is modeled but not in subsystem $subsystem so removed from the template"
+        else
+            if (component_type <: PSY.ACTransmission)
+                push!(network_model.modeled_ac_branch_types, component_type)
+            end
+        end
     end
     return
 end

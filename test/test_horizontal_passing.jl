@@ -1,9 +1,8 @@
 
 @testset "Test horizontal passing without emulator" begin
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results, _ = run_rts_multi_stage_decomposition_simulation(
-        [sys, sys2];
+        sys;
         NT=5,
         mode="horizontal",
         monitored_line_formulations=[StaticBranchUnbounded, StaticBranchUnbounded],
@@ -15,31 +14,55 @@
     #Test "horizontal passing": ActivePowerBalance__ACBus(t-1) =  StateEstimationInjections__ACBus(t).
     #For the real time problem, the state estimation comes from the previous time interval. 
     for b in [string(get_number(x)) for x in get_components(ACBus, sys)]
-        apb = read_realized_variable(results_rt, "ActivePowerBalance__ACBus")[!, b]
-        sei = read_realized_variable(results_rt, "StateEstimationInjections__ACBus")[!, b]
+        apb = read_realized_variable(
+            results_rt,
+            "ActivePowerBalance__ACBus";
+            table_format=TableFormat.WIDE,
+        )[
+            !,
+            b,
+        ]
+        sei = read_realized_variable(
+            results_rt,
+            "StateEstimationInjections__ACBus";
+            table_format=TableFormat.WIDE,
+        )[
+            !,
+            b,
+        ]
         @test isapprox(sei[2:end], apb[1:(end - 1)])
     end
     # Test values to ensure implementation changes aren't causing unexpected changes in results
-    @test read_realized_variable(results_rt, "ActivePowerBalance__ACBus")[1, "116"] ==
-          -0.3456209797192982
-    @test read_realized_variable(results_rt, "ActivePowerBalance__ACBus")[1, "119"] ==
-          -0.6255739732919298
+    @test read_realized_variable(
+        results_rt,
+        "ActivePowerBalance__ACBus";
+        table_format=TableFormat.WIDE,
+    )[
+        1,
+        "116",
+    ] == -0.3456209797192982
+    @test read_realized_variable(
+        results_rt,
+        "ActivePowerBalance__ACBus";
+        table_format=TableFormat.WIDE,
+    )[
+        1,
+        "119",
+    ] == -0.6255739732919298
 end
 
 @testset "Horizontal passing; compare branch models without emulator" begin
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results_original, _ = run_rts_multi_stage_decomposition_simulation(
-        [sys, sys2];
+        sys;
         NT=5,
         mode="horizontal",
         monitored_line_formulations=[StaticBranchUnbounded, StaticBranchUnbounded],
         use_emulator=false,
     )
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results_se_line, _ = run_rts_multi_stage_decomposition_simulation(
-        [sys, sys2];
+        sys;
         NT=5,
         mode="horizontal",
         monitored_line_formulations=[
@@ -52,11 +75,13 @@ end
     results_sub_se_line = get_decision_problem_results(results_se_line, "UC_Subsystem")
     flow_sub_original = read_realized_variable(
         results_sub_original,
-        "FlowActivePowerVariable__MonitoredLine",
+        "PTDFBranchFlow__MonitoredLine";
+        table_format=TableFormat.WIDE,
     )
     flow_sub_se_line = read_realized_variable(
         results_sub_se_line,
-        "FlowActivePowerVariable__MonitoredLine",
+        "PTDFBranchFlow__MonitoredLine";
+        table_format=TableFormat.WIDE,
     )
 
     # WITHOUT the emulator, we expect some difference in the flows outside of the first timestep:
@@ -66,10 +91,8 @@ end
 
 @testset "Horizontal passing; compare branch models with emulator" begin
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys3 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results_original, _ = run_rts_multi_stage_decomposition_simulation(
-        [sys, sys2, sys3];
+        sys;
         NT=5,
         mode="horizontal",
         monitored_line_formulations=[
@@ -80,10 +103,8 @@ end
         use_emulator=true,
     )
     sys = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys2 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
-    sys3 = build_system(PSISystems, "modified_RTS_GMLC_DA_sys")
     results_se_line, _ = run_rts_multi_stage_decomposition_simulation(
-        [sys, sys2, sys3];
+        sys;
         NT=5,
         mode="horizontal",
         monitored_line_formulations=[
@@ -97,11 +118,13 @@ end
     results_sub_se_line = get_decision_problem_results(results_se_line, "UC_Subsystem")
     flow_sub_original = read_realized_variable(
         results_sub_original,
-        "FlowActivePowerVariable__MonitoredLine",
+        "PTDFBranchFlow__MonitoredLine";
+        table_format=TableFormat.WIDE,
     )
     flow_sub_se_line = read_realized_variable(
         results_sub_se_line,
-        "FlowActivePowerVariable__MonitoredLine",
+        "PTDFBranchFlow__MonitoredLine";
+        table_format=TableFormat.WIDE,
     )
 
     # WITH the emulator, we expect the formulations to be equivalent:

@@ -8,6 +8,7 @@ function PSI.DecisionModel{MultiRegionProblem}(
 )
     name = Symbol(get(kwargs, :name, nameof(MultiRegionProblem)))
     settings = PSI.Settings(sys; [k for k in kwargs if first(k) ∉ [:name]]...)
+    PSI.auto_transform_time_series!(sys, settings)
     internal = ISOPT.ModelInternal(
         MultiOptimizationContainer(
             SequentialAlgorithm,
@@ -18,7 +19,6 @@ function PSI.DecisionModel{MultiRegionProblem}(
         ),
     )
     template_ = deepcopy(template)
-
     finalize_template!(template_, sys)
 
     model = PSI.DecisionModel{MultiRegionProblem}(
@@ -105,6 +105,14 @@ function _get_axes!(
 end
 
 function _make_joint_axes!(
+    dim1::Set{String},
+    dim2::Set{T},
+    dim3::Set{UnitRange{Int}},
+) where {T <: Union{Int, String}}
+    return (collect(dim1), collect(dim2), first(dim3))
+end
+
+function _make_joint_axes!(
     dim1::Set{T},
     dim2::Set{UnitRange{Int}},
 ) where {T <: Union{Int, String}}
@@ -116,7 +124,6 @@ function _make_joint_axes!(dim1::Set{UnitRange{Int}})
 end
 
 function _make_joint_axes!(dim1::Set{String})
-    @error dim1
     return (collect(dim1),)
 end
 
@@ -129,7 +136,6 @@ function _map_containers(model::PSI.DecisionModel{MultiRegionProblem})
     for subproblem_container in values(container.subproblems)
         _get_axes!(common_axes, subproblem_container)
     end
-
     for (field, vals) in common_axes
         field_data = getproperty(container, field)
         for (key, axes_data) in vals
@@ -276,18 +282,21 @@ function handle_initial_conditions!(model::PSI.DecisionModel{MultiRegionProblem}
 
 function instantiate_network_model(model::PSI.DecisionModel{MultiRegionProblem})
     template = PSI.get_template(model)
+    sys = PSI.get_system(model)
     for (id, sub_template) in get_sub_templates(template)
         network_model = PSI.get_network_model(sub_template)
         PSI.set_subsystem!(network_model, id)
-        PSI.instantiate_network_model(network_model, PSI.get_system(model))
+        branch_models = PSI.get_branch_models(sub_template)
+        number_of_steps = PSI.get_time_steps(PSI.get_optimization_container(model))[end]
+        for model in values(branch_models)
+            top_level_filter = get(model.attributes, "filter_function", x -> true)
+            model.attributes["filter_function"] =
+                x -> top_level_filter(x) && PSY.has_component(sys, id, x)
+        end
+        PSI.instantiate_network_model!(network_model, branch_models, number_of_steps, sys)
     end
     return
 end
-
-function PSI.serialize_problem(
-    model::PSI.DecisionModel{MultiRegionProblem};
-    optimizer::Nothing,
-) end
 
 function PSI.build_model!(model::PSI.DecisionModel{MultiRegionProblem})
     build_impl!(

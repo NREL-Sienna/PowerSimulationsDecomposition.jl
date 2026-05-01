@@ -1,3 +1,11 @@
+function add_hydro_budget_time_series_to_rts!(sys)
+    tstamp = range(DateTime("2020-01-01T00:00:00"); step=Dates.Hour(1), length=8784)
+    data = ones(length(tstamp))
+    ts = SingleTimeSeries("hydro_budget", TimeArray(tstamp, data))
+    add_time_series!(sys, first(get_components(HydroDispatch, sys)), ts)
+    transform_single_time_series!(sys, Day(2), Day(1))
+    return
+end
 
 function make_subsystems!(sys, area_subsystem_map)
     subsystems = unique([v for (_, v) in area_subsystem_map])

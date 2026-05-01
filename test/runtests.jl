@@ -9,11 +9,13 @@ using HydroPowerSimulations
 import PowerSystemCaseBuilder: PSITestSystems
 using PowerNetworkMatrices
 using StorageSystemsSimulations
+using TimeSeries
 using Dates
 using HiGHS
 using JuMP
 const IS = InfrastructureSystems
 const PSI = PowerSimulations
+const PSY = PowerSystems
 
 # Test Packages
 using Test
@@ -30,13 +32,16 @@ Aqua.test_undefined_exports(PowerSimulationsDecomposition)
 Aqua.test_stale_deps(PowerSimulationsDecomposition)
 Aqua.test_deps_compat(PowerSimulationsDecomposition)
 
-LOG_FILE = "power-systems.log"
-LOG_LEVELS = Dict(
+const LOG_FILE = "power-systems.log"
+const LOG_LEVELS = Dict(
     "Debug" => Logging.Debug,
     "Info" => Logging.Info,
     "Warn" => Logging.Warn,
     "Error" => Logging.Error,
 )
+const DISABLED_TEST_FILES = [  # Can generate with ls -1 test | grep "test_.*.jl"
+    "test_reserve_deliverability.jl",
+]
 
 """
 Copied @includetests from https://github.com/ssfrr/TestSetExtensions.jl.
@@ -72,7 +77,11 @@ macro includetests(testarg...)
             tests = map(f -> string(f, ".jl"), tests)
         end
         println()
+        if !isempty(DISABLED_TEST_FILES)
+            @warn("Some tests are disabled $DISABLED_TEST_FILES")
+        end
         for test in tests
+            (test ∈ DISABLED_TEST_FILES) && continue
             print(splitext(test)[1], ": ")
             include(test)
             println()

@@ -6,7 +6,6 @@ Base.@kwdef mutable struct MultiOptimizationContainer{T <: DecompositionAlgorith
     time_steps::UnitRange{Int}
     resolution::Dates.TimePeriod
     settings::PSI.Settings
-    settings_copy::PSI.Settings
     variables::Dict{ISOPT.VariableKey, AbstractArray}
     aux_variables::Dict{ISOPT.AuxVarKey, AbstractArray}
     duals::Dict{ISOPT.ConstraintKey, AbstractArray}
@@ -59,7 +58,6 @@ function MultiOptimizationContainer(
         time_steps=1:1,
         resolution=IS.time_period_conversion(resolution),
         settings=settings,
-        settings_copy=PSI.copy_for_serialization(settings),
         variables=Dict{ISOPT.VariableKey, AbstractArray}(),
         aux_variables=Dict{ISOPT.AuxVarKey, AbstractArray}(),
         duals=Dict{ISOPT.ConstraintKey, AbstractArray}(),
@@ -187,3 +185,18 @@ function PSI.serialize_optimization_model(
     container::MultiOptimizationContainer,
     save_path::String,
 ) end
+
+function PSI.get_column_names(
+    ::MultiOptimizationContainer,
+    field::Symbol,
+    subcontainer,
+    key::PSI.OptimizationContainerKey,
+)
+    return if field == :parameters
+        # Parameters are stored in ParameterContainer.
+        PSI.get_column_names(key, subcontainer)
+    else
+        # The others are in DenseAxisArrays.
+        PSI.get_column_names_from_axis_array(key, subcontainer)
+    end
+end
