@@ -19,13 +19,17 @@ function PSI.initialize_hvdc_system!(
     dc_model::PSI.TransportHVDCNetworkModel,
     system::PSY.System,
 )
-    dc_buses = PSY.get_components(PSY.DCBus, system)
-    @assert !isempty(dc_buses) "No DC buses found in the system. \
-        Consider adding DC Buses or removing the HVDC network model."
-    dc_bus_numbers = sort(PSY.get_number.(dc_buses))
-    container.expressions[ISOPT.ExpressionKey(PSI.ActivePowerBalance, PSY.DCBus)] =
-        PSI._make_container_array(dc_bus_numbers, PSI.get_time_steps(container))
-    return
+    subsys = PSI.get_subsystem(network_model)
+    dc_buses = PSY.get_available_components(PSY.DCBus, system; subsystem_name=subsys)
+    if isempty(dc_buses)
+        @info "No DC buses found in subsystem $subsys. Active Power Balance constraints for DCBuses will be empty."
+        return
+    else
+        dc_bus_numbers = sort(PSY.get_number.(dc_buses))
+        container.expressions[ISOPT.ExpressionKey(PSI.ActivePowerBalance, PSY.DCBus)] =
+            PSI._make_container_array(dc_bus_numbers, PSI.get_time_steps(container))
+        return
+    end
 end
 
 """
@@ -42,14 +46,18 @@ function PSI.construct_hvdc_network!(
     sys::PSY.System,
     transmission_model::PSI.NetworkModel{SplitAreaPTDFPowerModel},
     hvdc_model::PSI.TransportHVDCNetworkModel,
-    ::MultiProblemTemplate,
+    ::PSI.ProblemTemplate,
 )
-    PSI.add_constraints!(
-        container,
-        PSI.NodalBalanceActiveConstraint,
-        sys,
-        transmission_model,
-        hvdc_model,
-    )
+    subsys = PSI.get_subsystem(transmission_model)
+    dc_buses = PSY.get_available_components(PSY.DCBus, sys; subsystem_name=subsys)
+    if !isempty(dc_buses)
+        PSI.add_constraints!(
+            container,
+            PSI.NodalBalanceActiveConstraint,
+            sys,
+            transmission_model,
+            hvdc_model,
+        )
+    end
     return
 end

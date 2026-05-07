@@ -216,6 +216,7 @@ end
 
 function PSI.add_to_expression!(
     container::PSI.OptimizationContainer,
+    sys::PSY.System,
     ::Type{T},
     ::Type{U},
     devices::IS.FlattenIteratorWrapper{V},
@@ -227,17 +228,24 @@ function PSI.add_to_expression!(
     V <: PSY.InterconnectingConverter,
     W <: PSI.AbstractConverterFormulation,
 }
+    subsys = PSI.get_subsystem(network_model)
+    devices_in_subsys = PSY.get_available_components(V, sys; subsystem_name=subsys)
+    if isempty(devices_in_subsys)
+        # Skip methods if no devices are in the subsystem.
+        return
+    end
     variable = PSI.get_variable(container, U(), V)
     area_expr = PSI.get_expression(container, T(), PSY.Area)
-    expression_dc = PSI.get_expression(container, T(), PSY.DCBus)
     nodal_expr = PSI.get_expression(container, T(), PSY.ACBus)
+    expression_dc = PSI.get_expression(container, T(), PSY.DCBus)
     nrd = PSI.get_network_reduction(network_model)
-    for d in devices
+    for d in devices_in_subsys
         name = PSY.get_name(d)
         device_bus = PSY.get_bus(d)
+        dc_bus = PSY.get_dc_bus(d)
         area_name = PSY.get_name(PSY.get_area(device_bus))
         bus_no = PNM.get_mapped_bus_number(nrd, device_bus)
-        bus_number_dc = PSY.get_number(PSY.get_dc_bus(d))
+        bus_number_dc = PSY.get_number(dc_bus)
         for t in PSI.get_time_steps(container)
             PSI._add_to_jump_expression!(
                 area_expr[area_name, t],
