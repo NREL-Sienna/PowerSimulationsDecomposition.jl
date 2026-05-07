@@ -291,3 +291,30 @@ function _add_modeled_ac_branches!(
     end
     return
 end
+
+"""
+Sets the network model in a template.
+"""
+function PSI.set_hvdc_network_model!(
+    template::MultiProblemTemplate,
+    model::Union{Nothing, PSI.AbstractHVDCNetworkModel},
+)
+    PSI.set_hvdc_network_model!(template.base_template, model)
+    for (id, sub_template) in get_sub_templates(template)
+        new_model = deepcopy(model)
+        #PSI.set_subsystem!(new_model, id)
+        PSI.set_hvdc_network_model!(sub_template, new_model)
+    end
+    return
+end
+
+"""
+Sets the network model in a template.
+"""
+function PSI.set_hvdc_network_model!(
+    template::MultiProblemTemplate,
+    model::Type{U},
+) where {U <: PSI.AbstractHVDCNetworkModel}
+    PSI.set_hvdc_network_model!(template, model())
+    return
+end
