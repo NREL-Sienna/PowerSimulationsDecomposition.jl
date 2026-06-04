@@ -3,15 +3,16 @@ function build_impl!(
     template::MultiProblemTemplate,
     sys::PSY.System,
 )
+    coordination = get_coordination(container)
     for (index, sub_template) in get_sub_templates(template)
         @info "Building Subproblem $index" _group = PSI.LOG_GROUP_OPTIMIZATION_CONTAINER
-        PSI.build_impl!(get_subproblem(container, index), sub_template, sys)
+        subproblem = get_subproblem(container, index)
+        PSI.build_impl!(subproblem, sub_template, sys)
+        initialize_coordination!(coordination, subproblem, sys)
     end
 
     build_main_problem!(container, template, sys)
-
     check_optimization_container(container)
-
     return
 end
 
@@ -25,32 +26,26 @@ function build_main_problem!(
         subsystem_buses = PSY.get_available_components(PSY.ACBus, sys; subsystem_name=k)
         subsystem_bus_nos = [PSY.get_number(b) for b in subsystem_buses]
         container.subproblem_bus_map[k] = subsystem_bus_nos
-        subsystem_static_injectors =
-            PSY.get_available_components(PSY.StaticInjection, sys; subsystem_name=k)
+        subsystem_static_injectors = PSY.get_available_components(PSY.StaticInjection, sys; subsystem_name=k)
         subsystem_buses = PSY.get_available_components(PSY.ACBus, sys; subsystem_name=k)
         for si in subsystem_static_injectors
             if Symbol(typeof(si)) ∈ device_models_dict
                 if !(PSY.get_bus(si) ∈ subsystem_buses)
-                    throw(
-                        IS.ConflictingInputsError(
-                            "static injector $(PSY.get_name(si)) is in subsystem $k but the bus it is attached to is not. Check your data inputs.",
-                        ),
-                    )
+                    throw(IS.ConflictingInputsError(
+                        "static injector $(PSY.get_name(si)) is in subsystem $k but the bus it is attached to is not. Check your data inputs.",
+                    ))
                 end
             end
         end
-        subsystem_hvdcs =
-            PSY.get_available_components(PSY.TwoTerminalHVDC, sys; subsystem_name=k)
+        subsystem_hvdcs = PSY.get_available_components(PSY.TwoTerminalHVDC, sys; subsystem_name=k)
         if _has_hvdc_model(template)
             for hvdc in subsystem_hvdcs
                 from_bus_no = PSY.get_number(PSY.get_from(PSY.get_arc(hvdc)))
                 to_bus_no = PSY.get_number(PSY.get_to(PSY.get_arc(hvdc)))
                 if (from_bus_no ∉ subsystem_bus_nos) || (to_bus_no ∉ subsystem_bus_nos)
-                    throw(
-                        IS.ConflictingInputsError(
-                            "The terminal buses of HVDC must belong to the same subsystem. Check subsystem assignments for HVDC $(PSY.get_name(hvdc)) belonging to subsystem $k",
-                        ),
-                    )
+                    throw(IS.ConflictingInputsError(
+                        "The terminal buses of HVDC must belong to the same subsystem. Check subsystem assignments for HVDC $(PSY.get_name(hvdc)) belonging to subsystem $k",
+                    ))
                 end
             end
         end
@@ -169,7 +164,7 @@ function solve_impl!(
     container::MultiOptimizationContainer{SequentialAlgorithm},
     sys::PSY.System,
 )
-    # Solve main problem
+    coordination = get_coordination(container)
     status = ISSIM.RunStatus.RUNNING
     for (index, subproblem) in container.subproblems
         @debug "Solving problem $index"
@@ -177,7 +172,12 @@ function solve_impl!(
         if status != ISSIM.RunStatus.SUCCESSFULLY_FINALIZED
             return status
         end
+        update_coordination!(coordination, container, sys, index)
     end
+
     write_results_to_main_container(container)
+
+    apply_coordination!(coordination, container, sys)
+
     return status
 end

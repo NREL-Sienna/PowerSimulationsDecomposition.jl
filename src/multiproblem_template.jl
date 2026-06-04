@@ -235,6 +235,7 @@ function finalize_template!(template::MultiProblemTemplate, sys::PSY.System)
     PSI.finalize_template!(template.base_template, sys)
     for (ix, sub_template) in get_sub_templates(template)
         finalize_template!(sub_template, sys, ix)
+        # PSI.finalize_template!(sub_template, sys)
     end
     return
 end

@@ -1,1 +1,1 @@
-
+struct Relief <: PSI.VariableType end

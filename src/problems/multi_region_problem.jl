@@ -4,6 +4,7 @@ function PSI.DecisionModel{MultiRegionProblem}(
     template::MultiProblemTemplate,
     sys::PSY.System,
     ::Union{Nothing, JuMP.Model}=nothing;
+    coordination::CoordinationAlgorithm = NoCoordination(),
     kwargs...,
 )
     name = Symbol(get(kwargs, :name, nameof(MultiRegionProblem)))
@@ -16,6 +17,7 @@ function PSI.DecisionModel{MultiRegionProblem}(
             settings,
             PSI.get_deterministic_time_series_type(sys),
             get_sub_problem_keys(template),
+            coordination = coordination,
         ),
     )
     template_ = deepcopy(template)
@@ -345,6 +347,10 @@ function PSI._add_feedforward_to_model(
                 ),
             )
         end
+        # if device_model === nothing
+        #     @warn "Device model $(PSI.get_component_type(ff)) not in subsystem $id"
+        #     continue   
+        # end
         @info "Attaching $T to $(PSI.get_component_type(ff)) to Template $id"
         PSI.attach_feedforward!(device_model, ff)
     end
