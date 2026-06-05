@@ -22,14 +22,69 @@ Base.@kwdef mutable struct MultiOptimizationContainer{T <: DecompositionAlgorith
     metadata::ISOPT.OptimizationContainerMetadata
     default_time_series_type::Type{<:PSY.TimeSeriesData}  # Maybe isn't needed here
     mpi_info::Union{Nothing, MpiInfo}
+    coordination::CoordinationAlgorithm = NoCoordination()
 end
+
+# function MultiOptimizationContainer(
+#     ::Type{T},
+#     sys::PSY.System,
+#     settings::PSI.Settings,
+#     ::Type{U},
+#     subproblem_keys::Vector{String},
+# ) where {T <: DecompositionAlgorithm, U <: PSY.TimeSeriesData}
+#     resolutions = PSY.get_time_series_resolutions(sys)
+
+#     if length(resolutions) > 1
+#         error(
+#             "Multiple time series resolutions not supported for MultiOptimizationContainer",
+#         )
+#     else
+#         resolution = resolutions[1]
+#     end
+
+#     if isabstracttype(U)
+#         error("Default Time Series Type $U can't be abstract")
+#     end
+
+#     # define dictionary containing the optimization container for the subregion
+#     subproblems = Dict(
+#         k => PSI.OptimizationContainer(sys, settings, nothing, U) for k in subproblem_keys
+#     )
+#     subproblem_bus_map = Dict{String, Vector{Int}}()
+
+#     return MultiOptimizationContainer{T}(;
+#         main_problem=PSI.OptimizationContainer(sys, settings, nothing, U),
+#         subproblems=subproblems,
+#         subproblem_bus_map=subproblem_bus_map,
+#         time_steps=1:1,
+#         resolution=IS.time_period_conversion(resolution),
+#         settings=settings,
+#         variables=Dict{ISOPT.VariableKey, AbstractArray}(),
+#         aux_variables=Dict{ISOPT.AuxVarKey, AbstractArray}(),
+#         duals=Dict{ISOPT.ConstraintKey, AbstractArray}(),
+#         constraints=Dict{ISOPT.ConstraintKey, AbstractArray}(),
+#         objective_function=PSI.ObjectiveFunction(),
+#         expressions=Dict{ISOPT.ExpressionKey, AbstractArray}(),
+#         parameters=Dict{ISOPT.ParameterKey, PSI.ParameterContainer}(),
+#         primal_values_cache=PSI.PrimalValuesCache(),
+#         initial_conditions=Dict{ISOPT.InitialConditionKey, Vector{PSI.InitialCondition}}(),
+#         initial_conditions_data=PSI.InitialConditionsData(),
+#         base_power=PSY.get_base_power(sys),
+#         optimizer_stats=ISOPT.OptimizerStats(),
+#         built_for_recurrent_solves=false,
+#         metadata=ISOPT.OptimizationContainerMetadata(),
+#         default_time_series_type=U,
+#         mpi_info=nothing,
+#     )
+# end
 
 function MultiOptimizationContainer(
     ::Type{T},
     sys::PSY.System,
     settings::PSI.Settings,
     ::Type{U},
-    subproblem_keys::Vector{String},
+    subproblem_keys::Vector{String};
+    coordination::CoordinationAlgorithm = NoCoordination(),
 ) where {T <: DecompositionAlgorithm, U <: PSY.TimeSeriesData}
     resolutions = PSY.get_time_series_resolutions(sys)
 
@@ -74,6 +129,7 @@ function MultiOptimizationContainer(
         metadata=ISOPT.OptimizationContainerMetadata(),
         default_time_series_type=U,
         mpi_info=nothing,
+        coordination = coordination,
     )
 end
 
@@ -113,6 +169,7 @@ PSI.set_time_steps!(container::MultiOptimizationContainer, time_steps::UnitRange
 PSI.get_aux_variables(container::MultiOptimizationContainer) = container.aux_variables
 PSI.get_base_power(container::MultiOptimizationContainer) = container.base_power
 PSI.get_constraints(container::MultiOptimizationContainer) = container.constraints
+get_coordination(container::MultiOptimizationContainer) = container.coordination
 
 function get_subproblem(container::MultiOptimizationContainer, id::String)
     return container.subproblems[id]
