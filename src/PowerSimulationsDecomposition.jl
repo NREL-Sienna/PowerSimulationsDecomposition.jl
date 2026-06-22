@@ -48,6 +48,7 @@ include("algorithms/mpi_parallel_algorithm.jl")
 include("problems/multi_region_problem.jl")
 include("models/network_models.jl")
 include("models/hvdc_network_models.jl")
+include("models/converter_constructors.jl")
 include("models/branch_models.jl")
 include("print.jl")
 
